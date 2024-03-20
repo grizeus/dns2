@@ -1,34 +1,59 @@
+#include <netinet/in.h>
+#include <stdio.h>
 #include <stdlib.h>
+
 #include "dns_parser.h"
 
-char* extract_domain(const uint8_t* dnsPayload, int payload_len) {
-    struct DNSHeader* dnsHeader = (struct DNSHeader*)dnsPayload;
+#define MAX_DOMAIN_LEN 255
+
+char* extract_domain(char* buffer, int payload_len) {
+
+    const uint8_t* dns_payload = buffer;
+
+    struct DNSHeader* dnsHeader = (struct DNSHeader*)dns_payload;
+    uint16_t queryID = ntohs(dnsHeader->id);
 
     if ((ntohs(dnsHeader->flags) & 0x8000) == 0) {
-        const uint8_t* question = dnsPayload + sizeof(struct DNSHeader);
-        char* extractedDomain = malloc(payload_len);
+        const uint8_t* question = dns_payload + sizeof(struct DNSHeader);
+        char* extracted = malloc(payload_len + 1);
+        if (extracted == NULL) {
+            perror("Memory allocation failed");
+            return NULL;
+        }
 
+        int domain_ind = 0;
         int i = 0;
-        int domainind = 0;
-
         while (i < payload_len) {
-            int labelLength = question[i];
-            for (int j = 1; j <= labelLength; ++j) {
-                extractedDomain[domainind++] = (unsigned char)question[i + j];
+            int label_len = question[i];
+
+            if (domain_ind + label_len + 1 > MAX_DOMAIN_LEN) {
+                fprintf(stderr, "Domain length exceeds maximum allowed\n");
+                free(extracted);
+                return NULL;
             }
 
-            if (labelLength > 0) {
-                extractedDomain[domainind++] = '.';
+            for (int j = 1; j <= label_len; ++j) {
+                extracted[domain_ind++] = (unsigned char)question[i + j];
+            }
+
+            if (label_len > 0) {
+                extracted[domain_ind++] = '.';
             } else {
                 break;
             }
 
-            i += labelLength + 1;
+            i += label_len + 1;
         }
 
-        extractedDomain[domainind - 1] = '\0';
+        if (domain_ind > 0) {
+            extracted[domain_ind - 1] = '\0'; // Null-terminate the string
+        } else {
+            fprintf(stderr, "No domain extracted\n");
+            free(extracted);
+            return NULL;
+        }
 
-        return extractedDomain;
+        return extracted;
     }
 
     return NULL;

@@ -1,57 +1,96 @@
+#include <arpa/inet.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <netinet/in.h>
+#include <linux/if_packet.h>
+#include <fcntl.h>
+#include <stdlib.h>
+#include <string.h>
 
+#include "communicate.h"
 #include "str_vector.h"
 #include "string.h"
 #include "file_parser.h"
 #include "dns_parser.h"
+#include "map.h"
 
-typedef struct map map_t;
-struct map {
-
-    uint16_t transactionID;
-    struct sockaddr_in client;
-};
-
-struct client_message {
-
-    string_t message;
-    struct sockaddr_in address;
-};
+#define DNS_PORT       53
+#define PORT           8888
 
 int main(int argc, char** argv)
 {
     map_t clients;
-    char* upstream_addr;
+    char* upstream_name;
     char** black_list;
-    initialize("file.ini", &black_list, &upstream_addr);
+    initialize("file.ini", black_list, upstream_name);
+
+    int sockfd, dns_sockfd;
+    struct sockaddr_in server_addr, client_addr, dns_addr;
+
+    if ((sockfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
+        perror("Socket creation failed");
+        exit(1);
+    }
+
+    if ((dns_sockfd = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) < 0) {
+        perror("DNS socket creation failed");
+        exit(1);
+    }
+
+    memset(&server_addr, 0, sizeof(server_addr));
+    memset(&client_addr, 0, sizeof(client_addr));
+    memset(&dns_addr, 0, sizeof(dns_addr));
+
+    server_addr.sin_family = AF_INET;
+    server_addr.sin_port = htons(PORT);
+    inet_pton(AF_INET, "127.0.0.1", &server_addr.sin_addr);
+
+    dns_addr.sin_family = AF_INET;
+    dns_addr.sin_port = htons(DNS_PORT);
+    inet_pton(AF_INET, upstream_name, &dns_addr.sin_addr);
+
+    if (bind(sockfd, (const struct sockaddr *)&server_addr, sizeof(server_addr)) < 0) {
+        perror("Binding failed");
+        exit(1);
+    }
+
+    printf("Server listening on port %d...\n", PORT);
+
+    // Set the socket to non-blocking mode
+    if (fcntl(sockfd, F_SETFL, O_NONBLOCK) == -1) {
+        perror("Failed to set non-blocking mode");
+        exit(1);
+    }
     
     while (1)
     {
-        if (client_message = receive_from_client())
-        {
-            dns_name = get_dns(client_message->message);
-            if (in_list(dns_name, black_list)
+        ssize_t recv_cl_len;
+        char* message;
+        int is_received = 0;
+        if ((message = receive_from(sockfd, &client_addr, &recv_cl_len)) != NULL) {
+
+            char* dns_name = extract_domain(message, recv_cl_len);
+            if (in_list(dns_name, black_list))
             {
-                send_to_client(error, client_message->address);
+                send_to(sockfd, "Error", 6, &client_addr);
                 continue;
             }
-            if (send_to_upstream(upstream_addr, client_message->message))
+            if (send_to(dns_sockfd, message, recv_cl_len, &dns_addr))
                 // add client id and address to map
-                add_data(&clients, client_message->address, get_transaction_id(client_message->message));
-            continue;
+                inet_netof();
+                save_client_addr(&clients, message, get_transaction_id(message));
+            is_received = 1;
         }
-        else if (message = receive_from_upstream())
+        if (message = receive_from(dns_sockfd, &client_addr, &recv_cl_len))
         {
-            client_addr = find_data(&clients, get_transaction_id(message));
-            if (send_to_client(message, clinet_addr))
-                remove_data(&clients, get_transaction_id(message));
-            continue;
+            client_addr = get_client_addr(&clients, get_transaction_id(message));
+            if (send_to(sockfd, message, recv_cl_len, &client_addr))
+                remove_client_addr(&clients, get_transaction_id(message));
+            is_received = 1;
         }
-        else
+        if (!is_received)
         {
-            // if nothing happens programm will eat up 100% of cpu
+            usleep(10000);
         }
     }
     return 0;
