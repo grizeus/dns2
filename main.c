@@ -67,25 +67,28 @@ int main(int argc, char** argv)
         ssize_t recv_cl_len;
         char* message;
         int is_received = 0;
+        uint16_t id;
+        uint8_t* query;
         if ((message = receive_from(sockfd, &client_addr, &recv_cl_len)) != NULL) {
 
-            char* dns_name = extract_domain(message, recv_cl_len);
+            char* dns_name = parse_query(message, recv_cl_len, &id, &query);
             if (in_list(dns_name, black_list))
             {
                 send_to(sockfd, "Error", 6, &client_addr);
                 continue;
             }
             if (send_to(dns_sockfd, message, recv_cl_len, &dns_addr))
-                // add client id and address to map
-                inet_netof();
-                save_client_addr(&clients, message, get_transaction_id(message));
+                
+                save_client(&clients, id, &client_addr, query);
             is_received = 1;
         }
+        int query_len;
         if (message = receive_from(dns_sockfd, &client_addr, &recv_cl_len))
         {
-            client_addr = get_client_addr(&clients, get_transaction_id(message));
+            parse_responce(message, recv_cl_len, &id, &query, &query_len);
+            client_addr = *get_client(&clients, id, query, query_len);
             if (send_to(sockfd, message, recv_cl_len, &client_addr))
-                remove_client_addr(&clients, get_transaction_id(message));
+                remove_client(&clients, id, query, query_len);
             is_received = 1;
         }
         if (!is_received)
