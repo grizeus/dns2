@@ -3,7 +3,9 @@
 
 #include <stdint.h>
 
-struct DNSHeader {
+typedef struct dns_header dns_header_t;
+
+struct dns_header {
     uint16_t id;
     uint16_t flags;
     uint16_t qdcount;
@@ -12,6 +14,7 @@ struct DNSHeader {
     uint16_t arcount;
 };
 
-char* extract_domain(char* buffer, int payload_len);
+char* parse_query(char* buffer, int payload_len, uint16_t* id, uint8_t** query);
+void parse_responce(char* buffer, int payload_len, uint16_t* id, uint8_t** query, int* query_len);
 
 #endif // DNS_PARSER_H

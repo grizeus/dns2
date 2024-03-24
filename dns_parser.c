@@ -5,17 +5,21 @@
 #include "dns_parser.h"
 
 #define MAX_DOMAIN_LEN 255
+#define QTYPE_SIZE     2
+#define QCLASS_SIZE    2
 
-char* extract_domain(char* buffer, int payload_len) {
+char* parse_query(char* buffer, int payload_len, uint16_t* id, uint8_t** query) {
 
     const uint8_t* dns_payload = buffer;
 
-    struct DNSHeader* dnsHeader = (struct DNSHeader*)dns_payload;
-    uint16_t queryID = ntohs(dnsHeader->id);
+    dns_header_t* dns_header = (dns_header_t*)dns_payload;
+    *id = ntohs(dns_header->id);
+    int query_len = payload_len - sizeof(dns_header_t);
+    if ((ntohs(dns_header->flags) & 0x8000) == 0) {
 
-    if ((ntohs(dnsHeader->flags) & 0x8000) == 0) {
-        const uint8_t* question = dns_payload + sizeof(struct DNSHeader);
-        char* extracted = malloc(payload_len + 1);
+        const uint8_t* question = dns_payload + sizeof(dns_header_t);
+        char* extracted = malloc(query_len);
+
         if (extracted == NULL) {
             perror("Memory allocation failed");
             return NULL;
@@ -23,6 +27,7 @@ char* extract_domain(char* buffer, int payload_len) {
 
         int domain_ind = 0;
         int i = 0;
+        
         while (i < payload_len) {
             int label_len = question[i];
 
@@ -52,9 +57,37 @@ char* extract_domain(char* buffer, int payload_len) {
             free(extracted);
             return NULL;
         }
+        *query = malloc(query_len);
+        memcpy(*query, question, query_len);
 
         return extracted;
     }
 
     return NULL;
+}
+
+void parse_responce(char* buffer, int payload_len, uint16_t* id, uint8_t** query, int* query_len) {
+
+    const uint8_t* dns_payload = buffer;
+    dns_header_t* dns_header = (dns_header_t*)dns_payload;
+    *id = ntohs(dns_header->id);
+
+    if ((ntohs(dns_header->flags) & 0x8000) != 0) {
+
+        const uint8_t* query_resp = (uint8_t)dns_payload + sizeof(struct dns_header);
+        int i = 0;
+        *query_len = 0; // initialize
+        *query = malloc(payload_len - sizeof(struct dns_header) + 1);
+        while (i < payload_len) {
+            int label_len = query_resp[i];
+
+            if (label_len == 0) {
+                *query_len += QTYPE_SIZE + QCLASS_SIZE + 1;
+                break;
+            }
+            i += label_len + 1;
+            *query_len += label_len + 1;
+        }
+        memcpy(*query, query_resp, *query_len);
+    }
 }
