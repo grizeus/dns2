@@ -101,30 +101,30 @@ int main() {
     printf("\033[0;90minorder traversal\033[0;37m\n");
     {
         map_t map;
-        pair_value_t pair1 = { .transactionID = 1,
+        transaction_record_t pair1 = { .transactionID = 1,
                                .client.sin_family = AF_INET,
                                .client.sin_port = htons(8081)};
         if (inet_pton(AF_INET, "127.0.0.1", &pair1.client.sin_addr) != 1) {
             perror("inet_pton");
             return 1;
         }
-        pair_value_t pair2= { .transactionID = 2,
+        transaction_record_t pair2= { .transactionID = 2,
                                .client.sin_family = AF_INET,
                                .client.sin_port = htons(8082)};
         if (inet_pton(AF_INET, "127.0.0.1", &pair2.client.sin_addr) != 1) {
             perror("inet_pton");
             return 1;
         }
-        pair_value_t pair3 = { .transactionID = 3,
+        transaction_record_t pair3 = { .transactionID = 3,
                                .client.sin_family = AF_INET,
                                .client.sin_port = htons(8079)};
         if (inet_pton(AF_INET, "127.0.0.1", &pair3.client.sin_addr) != 1) {
             perror("inet_pton");
             return 1;
         }
-        insert(&map, pair1);
-        insert(&map, pair2);
-        insert(&map, pair3);
+        insert_into_map(&map, pair1);
+        insert_into_map(&map, pair2);
+        insert_into_map(&map, pair3);
 
         printf("Inorder Traversal (Key-Value Pairs):\n");
         inorder_traversal(map.root);
@@ -134,32 +134,32 @@ int main() {
     printf("\033[0;90msearch in map\033[0;37m\n");
     {
         map_t map;
-        pair_value_t pair1 = { .transactionID = 1,
+        transaction_record_t pair1 = { .transactionID = 1,
                                .client.sin_family = AF_INET,
                                .client.sin_port = htons(8081)};
         if (inet_pton(AF_INET, "127.0.0.1", &pair1.client.sin_addr) != 1) {
             perror("inet_pton");
             return 1;
         }
-        pair_value_t pair2= { .transactionID = 2,
+        transaction_record_t pair2= { .transactionID = 2,
                                .client.sin_family = AF_INET,
                                .client.sin_port = htons(8082)};
         if (inet_pton(AF_INET, "127.0.0.1", &pair2.client.sin_addr) != 1) {
             perror("inet_pton");
             return 1;
         }
-        pair_value_t pair3 = { .transactionID = 3,
+        transaction_record_t pair3 = { .transactionID = 3,
                                .client.sin_family = AF_INET,
                                .client.sin_port = htons(8079)};
         if (inet_pton(AF_INET, "127.0.0.1", &pair3.client.sin_addr) != 1) {
             perror("inet_pton");
             return 1;
         }
-        insert(&map, pair1);
-        insert(&map, pair2);
-        insert(&map, pair3);
-        node_t* required = search(&map, 1);
-        node_t* not_in_map= search(&map, 5);
+        insert_into_map(&map, pair1);
+        insert_into_map(&map, pair2);
+        insert_into_map(&map, pair3);
+        map_node_t* required = search(&map, 1);
+        map_node_t* not_in_map= search(&map, 5);
         TEST(ntohs(required->data.client.sin_port) == ntohs(pair1.client.sin_port));
         TEST(not_in_map == NULL);
         destroy_map(&map);
