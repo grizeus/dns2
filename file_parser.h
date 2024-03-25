@@ -27,4 +27,17 @@ char* get_string(const char* key, char* line);
  * @param upstream String containting address of upstream DNS server
  * */
 void initialize(const char* filename, char** black_list, char* upstream);
+/**
+ * @brief Checks if a target string is in a list of strings.
+ *
+ * This function iterates through the given list of strings until it encounters
+ * a NULL pointer, indicating the end of the list. It compares the target string
+ * with each string in the list using strcmp function.
+ *
+ * @param target The string to search for.
+ * @param list   A null-terminated list of strings.
+ *
+ * @return 1 if the target string is found in the list, 0 otherwise.
+ */
+int in_list(const char* target, char** list);
 #endif // FILE_PARSER_H
