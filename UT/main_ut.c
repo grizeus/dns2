@@ -127,7 +127,7 @@ int main() {
         insert_into_map(&map, pair3);
 
         printf("Inorder Traversal (Key-Value Pairs):\n");
-        inorder_traversal(map.root);
+        map_traversal(map.root);
         destroy_map(&map);
         printf("\n");
     }

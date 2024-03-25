@@ -6,9 +6,9 @@
 #include <fcntl.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 #include "communicate.h"
-#include "str_vector.h"
 #include "string.h"
 #include "file_parser.h"
 #include "dns_parser.h"
@@ -77,13 +77,13 @@ int main(int argc, char** argv)
                 send_to(sockfd, "Error", 6, &client_addr);
                 continue;
             }
-            if (send_to(dns_sockfd, message, recv_cl_len, &dns_addr))
-                
+            if (send_to(dns_sockfd, message, recv_cl_len, &dns_addr)) {
                 save_client(&clients, id, &client_addr, query);
+            }
             is_received = 1;
         }
         int query_len;
-        if (message = receive_from(dns_sockfd, &client_addr, &recv_cl_len))
+        if (message == receive_from(dns_sockfd, &client_addr, &recv_cl_len))
         {
             parse_responce(message, recv_cl_len, &id, &query, &query_len);
             client_addr = *get_client(&clients, id, query, query_len);

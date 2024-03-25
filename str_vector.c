@@ -69,13 +69,13 @@ void destroy_vector(vector_t* vec) {
     vec->capacity = 0;
 }
 
-int in_list(const char* target, vector_t* vec) {
-
-    for (size_t i = 0; i < vec->size; ++i) {
-        if (strcmp(target, vec->data[i].data) == 0) {
-            return 1;
-        }
-    }
-
-    return 0;
-}
+// int in_list(const char* target, vector_t* vec) {
+//
+//     for (size_t i = 0; i < vec->size; ++i) {
+//         if (strcmp(target, vec->data[i].data) == 0) {
+//             return 1;
+//         }
+//     }
+//
+//     return 0;
+// }
