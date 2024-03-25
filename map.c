@@ -5,6 +5,9 @@
 
 #include "map.h"
 
+static map_node_t* find_successor(map_node_t* node);
+static void destroy_node(map_node_t* root);
+
 map_node_t* create_map_node(const uint16_t id, const struct sockaddr_in* client_addr, const uint8_t* query) {
 
     map_node_t* new_node = (map_node_t*)malloc(sizeof(map_node_t));
@@ -151,18 +154,17 @@ void left_rotate(map_t* map, map_node_t* node) {
     node->parent = pivot;
 }
 
-// void inorder_traversal(map_node_t* node) {
+void map_traversal(map_node_t* node) {
 
-//     if (node != NULL) {
-//         inorder_traversal(node->left);
-//         printf("(%u, %s:%d)", node->data.transaction_id,
-//                inet_ntoa(node->data.client.sin_addr),
-//                ntohs(node->data.client.sin_port));
-//         inorder_traversal(node->right);
-//     }
-// }
+    if (node != NULL) {
+        map_traversal(node->left);
+        printf("(%u)", node->data.transaction_id);
+        list_traversal(node->data.client_info);
+        map_traversal(node->right);
+    }
+}
 
-struct sockaddr_in* get_client(map_t* map, uint16_t id, const uint8_t* query, int query_len) {
+const struct sockaddr_in* get_client(map_t* map, uint16_t id, const uint8_t* query, int query_len) {
 
     map_node_t* current = map->root;
 
@@ -175,7 +177,7 @@ struct sockaddr_in* get_client(map_t* map, uint16_t id, const uint8_t* query, in
     }
 
     if (is_one_node(current->data.client_info)) {
-        return &current->data.client_info->head->client_addr;
+        return current->data.client_info->head->client_addr;
     } else {
         list_node_t* req_node = search_by_query(current->data.client_info, query, query_len);
         return req_node->client_addr;
@@ -222,7 +224,7 @@ void remove_client(map_t* map, uint16_t id, const uint8_t* query, int query_len)
         } else {
             parent->right = NULL;
         }
-        free(node_to_remove);
+        destroy_node(node_to_remove);
     }
     // Case 2: Node has one child
     else if (node_to_remove->left == NULL || node_to_remove->right == NULL) {
@@ -235,7 +237,7 @@ void remove_client(map_t* map, uint16_t id, const uint8_t* query, int query_len)
         } else {
             parent->right = child;
         }
-        free(node_to_remove);
+        destroy_node(node_to_remove);
     }
     // Case 3: Node has two children
     else {

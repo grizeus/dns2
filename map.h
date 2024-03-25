@@ -40,9 +40,9 @@ void save_client(map_t* map, const uint16_t id, const struct sockaddr_in* client
 void insert_fixup(map_t* map, map_node_t* node);
 void right_rotate(map_t* map, map_node_t* node);
 void left_rotate(map_t* map, map_node_t* node);
-void inorder_traversal(map_node_t* node);
+void map_traversal(map_node_t* node);
 void destroy_map(map_t* map);
-struct sockaddr_in* get_client(map_t* map, uint16_t id, const uint8_t* query, int query_len);
+const struct sockaddr_in* get_client(map_t* map, uint16_t id, const uint8_t* query, int query_len);
 void remove_client(map_t* map, uint16_t id, const uint8_t* query, int query_len);
 
 #endif // !MAP_H
