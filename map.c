@@ -164,7 +164,7 @@ void map_traversal(map_node_t* node) {
     }
 }
 
-const struct sockaddr_in* get_client(map_t* map, uint16_t id, const uint8_t* query, int query_len) {
+const struct sockaddr_in* get_client(map_t* map, uint16_t id, const uint8_t* query, ssize_t query_len) {
 
     map_node_t* current = map->root;
 
@@ -185,7 +185,7 @@ const struct sockaddr_in* get_client(map_t* map, uint16_t id, const uint8_t* que
 }
 
 // Function to remove a node from the map
-void remove_client(map_t* map, uint16_t id, const uint8_t* query, int query_len) {
+void remove_client(map_t* map, uint16_t id, const uint8_t* query, ssize_t query_len) {
     map_node_t* current = map->root;
     map_node_t* parent = NULL;
     map_node_t* node_to_remove = NULL;

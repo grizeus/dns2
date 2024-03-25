@@ -41,7 +41,7 @@ void insert_into_list(linked_list_t* list, const struct sockaddr_in* client_addr
     }
 }
 
-list_node_t* search_by_query(linked_list_t* list, const uint8_t* query, int query_len) {
+list_node_t* search_by_query(linked_list_t* list, const uint8_t* query, ssize_t query_len) {
 
     list_node_t* current = list->head;
     while (current != NULL) {
@@ -54,7 +54,7 @@ list_node_t* search_by_query(linked_list_t* list, const uint8_t* query, int quer
     return NULL;
 }
 
-void delete_from_list(linked_list_t* list, const uint8_t* query, int query_len) {
+void delete_from_list(linked_list_t* list, const uint8_t* query, ssize_t query_len) {
     // Search for the node with the specified query
     list_node_t* node_to_delete = search_by_query(list, query, query_len);
 

@@ -3,6 +3,7 @@
 
 #include <netinet/in.h>
 #include <stdint.h>
+#include <sys/types.h>
 #include "linked_list.h"
 
 typedef struct transaction_record transaction_record_t;
@@ -42,7 +43,7 @@ void right_rotate(map_t* map, map_node_t* node);
 void left_rotate(map_t* map, map_node_t* node);
 void map_traversal(map_node_t* node);
 void destroy_map(map_t* map);
-const struct sockaddr_in* get_client(map_t* map, uint16_t id, const uint8_t* query, int query_len);
-void remove_client(map_t* map, uint16_t id, const uint8_t* query, int query_len);
+const struct sockaddr_in* get_client(map_t* map, uint16_t id, const uint8_t* query, ssize_t query_len);
+void remove_client(map_t* map, uint16_t id, const uint8_t* query, ssize_t query_len);
 
 #endif // !MAP_H
