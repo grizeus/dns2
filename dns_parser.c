@@ -1,6 +1,7 @@
 #include <netinet/in.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "dns_parser.h"
 
@@ -8,9 +9,9 @@
 #define QTYPE_SIZE     2
 #define QCLASS_SIZE    2
 
-char* parse_query(char* buffer, int payload_len, uint16_t* id, uint8_t** query) {
+char* parse_query(const char* buffer, int payload_len, uint16_t* id, uint8_t** query) {
 
-    const uint8_t* dns_payload = buffer;
+    const uint8_t* dns_payload = (const uint8_t*)buffer;
 
     dns_header_t* dns_header = (dns_header_t*)dns_payload;
     *id = ntohs(dns_header->id);
@@ -66,15 +67,15 @@ char* parse_query(char* buffer, int payload_len, uint16_t* id, uint8_t** query) 
     return NULL;
 }
 
-void parse_responce(char* buffer, int payload_len, uint16_t* id, uint8_t** query, int* query_len) {
+void parse_responce(const char* buffer, int payload_len, uint16_t* id, uint8_t** query, int* query_len) {
 
-    const uint8_t* dns_payload = buffer;
+    const uint8_t* dns_payload = (const uint8_t*)buffer;
     dns_header_t* dns_header = (dns_header_t*)dns_payload;
     *id = ntohs(dns_header->id);
 
     if ((ntohs(dns_header->flags) & 0x8000) != 0) {
 
-        const uint8_t* query_resp = (uint8_t)dns_payload + sizeof(struct dns_header);
+        const uint8_t* query_resp = dns_payload + sizeof(struct dns_header);
         int i = 0;
         *query_len = 0; // initialize
         *query = malloc(payload_len - sizeof(struct dns_header) + 1);

@@ -14,7 +14,7 @@ struct dns_header {
     uint16_t arcount;
 };
 
-char* parse_query(char* buffer, int payload_len, uint16_t* id, uint8_t** query);
-void parse_responce(char* buffer, int payload_len, uint16_t* id, uint8_t** query, int* query_len);
+char* parse_query(const char* buffer, int payload_len, uint16_t* id, uint8_t** query);
+void parse_responce(const char* buffer, int payload_len, uint16_t* id, uint8_t** query, int* query_len);
 
 #endif // DNS_PARSER_H
