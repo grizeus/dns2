@@ -1,7 +1,12 @@
+#include <arpa/inet.h>
+#include <netinet/in.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 #include "linked_list.h"
+
+#define MAX_DNS_QUERY_SIZE 512
 
 list_node_t* create_list_node(const struct sockaddr_in* client_addr, const uint8_t* query) {
 
@@ -75,6 +80,28 @@ void delete_from_list(linked_list_t* list, const uint8_t* query, int query_len) 
 
     // Free memory allocated for the node
     free(node_to_delete);
+}
+
+void list_traversal(linked_list_t* list) {
+
+    list_node_t* current = list->head;
+
+    printf("address|query: ");
+    while (current != NULL) {
+        char ip_address[INET_ADDRSTRLEN];
+        
+        if (inet_ntop(AF_INET, &(current->client_addr->sin_addr), ip_address, INET_ADDRSTRLEN) == NULL) {
+            perror("Error converting IP address to string");
+            return;
+        }
+        printf("%s: ", ip_address);
+
+        for (int i = 0; i < MAX_DNS_QUERY_SIZE; ++i) {
+            printf("%02x ", current->query[i] & 0xFF);
+        }
+        current = current->next;
+    }
+    printf("\n");
 }
 
 int is_one_node(const linked_list_t* list) {
