@@ -25,7 +25,9 @@ struct transaction_record {
 };
 
 struct map_node {
-    transaction_record_t data;
+    // transaction_record_t data;
+    void* data;
+    ssize_t size;
     color_t color;
     map_node_t* parent;
     map_node_t* left;

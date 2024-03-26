@@ -13,11 +13,23 @@ map_node_t* create_map_node(const uint16_t id, const struct sockaddr_in* client_
     map_node_t* new_node = (map_node_t*)malloc(sizeof(map_node_t));
 
     if (new_node != NULL) {
-        new_node->data.transaction_id = id;
+        transaction_record_t* record = (transaction_record_t*)malloc(sizeof(transaction_record_t));
+
+        if (record == NULL) {
+            destroy_node(new_node);
+            return NULL;
+        }
+
+        record->transaction_id = id;
+
         linked_list_t* list;
         linked_list_init(list);
         insert_into_list(list, client_addr, query);
-        new_node->data.client_info = list;
+        record->client_info = list;
+
+        new_node->data = (void*)record;
+        new_node->size = sizeof(transaction_record_t);
+
         new_node->color = RED;
         new_node->parent = NULL;
         new_node->left = NULL;
