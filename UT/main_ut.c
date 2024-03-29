@@ -158,8 +158,8 @@ int main() {
         insert_into_map(&map, pair1);
         insert_into_map(&map, pair2);
         insert_into_map(&map, pair3);
-        map_node_t* required = search(&map, 1);
-        map_node_t* not_in_map= search(&map, 5);
+        map_t* required = search(&map, 1);
+        map_t* not_in_map= search(&map, 5);
         TEST(ntohs(required->data.client.sin_port) == ntohs(pair1.client.sin_port));
         TEST(not_in_map == NULL);
         destroy_map(&map);

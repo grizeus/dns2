@@ -9,13 +9,29 @@
 #include <unistd.h>
 
 #include "communicate.h"
-#include "string.h"
+#include "binary_string.h"
+#include "query_record.h"
 #include "file_parser.h"
 #include "dns_parser.h"
+#include "linked_list.h"
 #include "map.h"
 
 #define DNS_PORT       53
 #define PORT           8888
+
+record_t* create_record(const struct sockaddr_in* address, const uint8_t* query, size_t size) {
+
+    record_t* new_record = (record_t*)malloc(sizeof(record_t));
+    if (new_record == NULL) {
+        return NULL;
+    }
+    
+    new_record->address = *address;
+    new_record->query.data = query;
+    new_record->query.size = size;
+
+    return new_record;
+}
 
 int main(int argc, char** argv)
 {
@@ -78,11 +94,12 @@ int main(int argc, char** argv)
                 continue;
             }
             if (send_to(dns_sockfd, message, recv_cl_len, &dns_addr)) {
-                save_client(&clients, id, &client_addr, query);
+                record_t* new_record = create_record(&client_addr, query, recv_cl_len);
+                map_add(&clients, id, new_record, NULL);
             }
             is_received = 1;
         }
-        int query_len;
+        ssize_t query_len;
         if (message == receive_from(dns_sockfd, &client_addr, &recv_cl_len))
         {
             parse_responce(message, recv_cl_len, &id, &query, &query_len);
