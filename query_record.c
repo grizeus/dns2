@@ -4,7 +4,7 @@
 int compare_record(const record_t* first, const record_t* second) {
 
     if (first->query.size != second->query.size) {
-        return 0;
+        return 1;
     }
 
     return memcmp(first->query.data, second->query.data, first->query.size);
