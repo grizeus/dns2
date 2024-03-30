@@ -67,7 +67,33 @@ char* parse_query(const char* buffer, int payload_len, uint16_t* id, uint8_t** q
     return NULL;
 }
 
-void parse_responce(const char* buffer, int payload_len, uint16_t* id, uint8_t** query, int* query_len) {
+// void parse_responce(const char* buffer, int payload_len, uint16_t* id, uint8_t** query, int* query_len) {
+
+//     const uint8_t* dns_payload = (const uint8_t*)buffer;
+//     dns_header_t* dns_header = (dns_header_t*)dns_payload;
+//     *id = ntohs(dns_header->id);
+
+//     if ((ntohs(dns_header->flags) & 0x8000) != 0) {
+
+//         const uint8_t* query_resp = dns_payload + sizeof(struct dns_header);
+//         int i = 0;
+//         *query_len = 0; // initialize
+//         *query = malloc(payload_len - sizeof(struct dns_header) + 1);
+//         while (i < payload_len) {
+//             int label_len = query_resp[i];
+
+//             if (label_len == 0) {
+//                 *query_len += QTYPE_SIZE + QCLASS_SIZE + 1;
+//                 break;
+//             }
+//             i += label_len + 1;
+//             *query_len += label_len + 1;
+//         }
+//         memcpy(*query, query_resp, *query_len);
+//     }
+// }
+
+void parse_responce(const char* buffer, int payload_len, uint16_t* id, binary_string_t* query) {
 
     const uint8_t* dns_payload = (const uint8_t*)buffer;
     dns_header_t* dns_header = (dns_header_t*)dns_payload;
@@ -77,18 +103,19 @@ void parse_responce(const char* buffer, int payload_len, uint16_t* id, uint8_t**
 
         const uint8_t* query_resp = dns_payload + sizeof(struct dns_header);
         int i = 0;
-        *query_len = 0; // initialize
-        *query = malloc(payload_len - sizeof(struct dns_header) + 1);
+        size_t query_len = 0; // initialize
+        query->data = malloc(payload_len - sizeof(struct dns_header) + 1);
         while (i < payload_len) {
             int label_len = query_resp[i];
 
             if (label_len == 0) {
-                *query_len += QTYPE_SIZE + QCLASS_SIZE + 1;
+                query_len += QTYPE_SIZE + QCLASS_SIZE + 1;
                 break;
             }
             i += label_len + 1;
-            *query_len += label_len + 1;
+            query_len += label_len + 1;
         }
-        memcpy(*query, query_resp, *query_len);
+        memcpy(query->data, query_resp, query_len);
+        query->size = query_len;
     }
 }
