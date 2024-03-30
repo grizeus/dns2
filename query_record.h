@@ -25,5 +25,5 @@ typedef struct record {
  * @param second Pointer to the second record_t object.
  * @return Returns 0 if the records are equal; otherwise, returns a non-zero value.
  */
-int compare_record(const record_t* first, const record_t* second);
+int compare_record(const record_t* first, const binary_string_t* second);
 #endif // !QUERY_RECORD_H
