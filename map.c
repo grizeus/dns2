@@ -39,7 +39,7 @@ void map_add(map_t** root, int key, void* data, void(*inner_job)(void*, void*)) 
             current = current->right;
         } else {
             if (inner_job) {
-                inner_job(current->data, data);
+                inner_job(&(current->data), data);
             }
             free(new_node);
             return;
@@ -177,16 +177,16 @@ void map_iterate(map_t* node, void(*iter)(void*)) {
     }
 }
 
-void map_delete(map_t** root, int key, void(*deleter)(void*)) {
+void map_delete(map_t** root, int key, void(*deleter)(void*, void*), void* additional_key) {
 
     if (*root == NULL) {
         return;
     }
 
     if (key < (*root)->key) {
-        map_delete(&((*root)->left), key, deleter);
+        map_delete(&((*root)->left), key, additional_key, deleter);
     } else if (key > (*root)->key) {
-        map_delete(&((*root)->right), key, deleter);
+        map_delete(&((*root)->right), key, additional_key, deleter);
     } else {
 
         map_t* node_to_delete = *root;
@@ -203,7 +203,7 @@ void map_delete(map_t** root, int key, void(*deleter)(void*)) {
             }
 
             if (deleter != NULL) {
-                deleter(node_to_delete->data);
+                deleter(node_to_delete->data, additional_key);
             }
 
             free(node_to_delete);
@@ -219,7 +219,7 @@ void map_delete(map_t** root, int key, void(*deleter)(void*)) {
             node_to_delete->key = successor->key;
             node_to_delete->data = successor->data;
 
-            map_delete(&(node_to_delete->right), successor->key, deleter);
+            map_delete(&(node_to_delete->right), successor->key, additional_key, deleter);
         }
     }
 }
@@ -233,5 +233,5 @@ void map_clear(map_t** root, void(*deleter)(void*)) {
     map_clear(&((*root)->left), deleter);
     map_clear(&((*root)->right), deleter);
 
-    map_delete(root, (*root)->key, deleter);
+    map_delete(root, (*root)->key, NULL, deleter);
 }

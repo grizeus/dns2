@@ -19,7 +19,7 @@ struct map {
 
 map_t* map_create(int key, void* data);
 void map_add(map_t** root, int key, void* data, void(*inner_job)(void*, void*));
-void map_delete(map_t** root, int key, void(*deleter)(void*));
+void map_delete(map_t** root, int key, void(*deleter)(void*, void*), void* additional_key);
 void* map_find(map_t* root, int key);
 void map_iterate(map_t* root, void(*iter)(void*));
 void map_clear(map_t** root, void(*deleter)(void*));
