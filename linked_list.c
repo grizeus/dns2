@@ -31,7 +31,15 @@ void list_add(list_t** head, void* data) {
     }
 }
 
+void list_add_node(list_t** head, list_t* node) {
 
+    if (*head == NULL) {
+        *head = node;
+    } else {
+        node->next = *head;
+        *head = node;
+    }
+}
 void list_iterate(list_t* list, void (*iter)(void*)) {
 
     list_t* current = list;
@@ -65,7 +73,7 @@ void list_delete(list_t** list, void* key, int(*compare)(void*, void*)) {
     list_t* prev = NULL;
 
     while (current != NULL) {
-        if ((*compare)(current->data, key)) {
+        if ((*compare)(current->data, key) == 0) {
 
             // Adjust pointers of adjacent nodes
             if (prev != NULL) {
