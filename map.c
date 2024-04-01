@@ -39,7 +39,7 @@ void map_add(map_t** root, int key, void* data, void(*inner_job)(void*, void*)) 
             current = current->right;
         } else {
             if (inner_job) {
-                inner_job(&(current->data), data);
+                (*inner_job)(&(current->data), data);
             }
             free(new_node);
             return;
