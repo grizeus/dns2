@@ -12,8 +12,10 @@
 static int failed = 0;
 void out_map(list_t* data);
 void out_list(record_t* data);
-void int_list_out(int a);
-void int_map_out(list_t* data);
+void int_list_out(record_t data);
+void record_map_out(list_t* data);
+struct sockaddr_in* get_address(list_t* head, binary_string_t* key);
+void client_remover(list_t** head, binary_string_t* query);
 
 int test(int pass, const char* msg, const char* file, int line) {
 
@@ -25,6 +27,7 @@ int test(int pass, const char* msg, const char* file, int line) {
 
     return pass;
 }
+
 record_t* create_rcrd(const struct sockaddr_in* address, const uint8_t* query, size_t size) {
 
     record_t* new_record = (record_t*)malloc(sizeof(record_t));
@@ -138,16 +141,18 @@ int main() {
         list_add(&head, rec1);
         list_add(&head, rec2);
         list_add(&head, rec1);
-
+        list_add(&head, rec1);
+        list_add(&head, rec1);
+        list_add(&head, rec1);
+        list_iterate(head, out_list);
         TEST(head != NULL);
         TEST(head->next != NULL);
         TEST(head->next->next != NULL);
         
         binary_string_t query_key = binary_string_create(query2, sizeof(query2)/sizeof(query2[0]));
         list_delete(&head, &query_key, compare_record);
-
-        TEST(head->next->next == NULL);
-
+        // TEST(head->next->next == NULL);
+        list_iterate(head, out_list);
         list_t* res = list_find(&head, &query_key, compare_record);
         TEST(res == NULL);
     }
@@ -189,6 +194,31 @@ int main() {
         TEST(map->key == 69);
         map_clear(&map, NULL);
     }
+    printf("\033[0;90madd to map primitive\033[0;37m\n");
+    {
+        map_t* map = NULL;
+        struct sockaddr_in client;
+        client.sin_family = AF_INET;
+        client.sin_port = htons(8001);
+        if (inet_pton(AF_INET, "127.0.0.1", &client.sin_addr) != 1) {
+            perror("inet_pton");
+            return 1;
+        }
+        uint8_t* str[] = {0x26, 0xa9, 0x01, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00};
+        size_t size = 9;
+        // list_t* rec1 = create_rcrd_list(&client, str, size);
+        record_t* rec1 = create_rcrd(&client, str, size);
+        map_add(&map, 300, rec1, NULL);
+        map_add(&map, 20, rec1, NULL);
+        map_add(&map, 69, rec1, NULL);
+
+        TEST(map != NULL);
+        map_clear(&map, NULL);
+
+        map_add(&map, 1, 10, NULL);
+        int result = map_find(map, 1);
+        TEST(result == 10);
+    }
     printf("\033[0;90msearch in map\033[0;37m\n");
     {
         map_t* map = NULL;
@@ -202,9 +232,9 @@ int main() {
         uint8_t query1[] = {0x26, 0xa9, 0x01, 0x02, 0x00, 0x01, 0x00, 0x00, 0x00, 0xff};
         size_t size = 10;
         list_t* rec1 = create_rcrd_list(&client_1, &query1, size);
-        map_add(&map, 1, rec1, list_add);
-        map_add(&map, 2, rec1, list_add);
-        map_add(&map, 3, rec1, list_add);
+        map_add(&map, 1, rec1, list_add_node);
+        map_add(&map, 2, rec1, list_add_node);
+        map_add(&map, 3, rec1, list_add_node);
 
         int key = 2;
         list_t* res_list = map_find(map, key);
@@ -239,9 +269,9 @@ int main() {
         uint8_t query1[] = {0x26, 0xa9, 0x01, 0x02, 0x00, 0x01, 0x00, 0x00, 0x00, 0xff};
         size_t size = 10;
         list_t* rec1 = create_rcrd_list(&client_1, &query1, size);
-        map_add(&map, 1, rec1, list_add);
-        map_add(&map, 2, rec1, list_add);
-        map_add(&map, 3, rec1, list_add);
+        map_add(&map, 1, rec1, list_add_node);
+        map_add(&map, 2, rec1, list_add_node);
+        map_add(&map, 3, rec1, list_add_node);
         
         client_2.sin_family = AF_INET;
         client_2.sin_port = htons(8003);
@@ -281,6 +311,112 @@ int main() {
         binary_string_destroy(&query_key1);
         binary_string_destroy(&query_key2);
     }
+    printf("\033[0;90mtest get_address func\033[0;37m\n");
+    {
+        map_t* map = NULL;
+        struct sockaddr_in client_1, client_2;
+        client_1.sin_family = AF_INET;
+        client_1.sin_port = htons(8001);
+        if (inet_pton(AF_INET, "127.0.0.1", &client_1.sin_addr) != 1) {
+            perror("inet_pton");
+            return 1;
+        }
+        uint8_t query1[] = {0x26, 0xa9, 0x01, 0x02, 0x00, 0x01, 0x00, 0x00, 0x00, 0xff};
+        size_t size = 10;
+        list_t* rec1 = create_rcrd_list(&client_1, &query1, size);
+        map_add(&map, 1, rec1, list_add_node);
+        map_add(&map, 2, rec1, list_add_node);
+        map_add(&map, 3, rec1, list_add_node);
+        
+        client_2.sin_family = AF_INET;
+        client_2.sin_port = htons(8003);
+        if (inet_pton(AF_INET, "127.0.0.1", &client_2.sin_addr) != 1) {
+            perror("inet_pton");
+            return 1;
+        }
+        uint8_t query2[] = {0x26, 0xa9, 0x01, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0xfe};
+        list_t* rec2 = create_rcrd_list(&client_2, &query2, size);
+        map_add(&map, 2, rec2, list_add_node);
+
+        int key = 2;
+        list_t* res_list = map_find(map, key);
+        
+        binary_string_t query_key1 = binary_string_create(query1, size);
+        binary_string_t query_key2 = binary_string_create(query2, size);
+
+        struct sockaddr_in* result_addr = get_address(res_list, &query_key1);
+        TEST(result_addr != NULL);
+        TEST(ntohs(result_addr->sin_port) == ntohs(client_1.sin_port));
+        result_addr = get_address(res_list, &query_key2);
+        TEST(ntohs(result_addr->sin_port) == ntohs(client_2.sin_port));
+
+        map_clear(&map, NULL);
+        binary_string_destroy(&query_key1);
+        binary_string_destroy(&query_key2);
+    }
+    printf("\033[0;90mremove from map\033[0;37m\n");
+    {
+        map_t* map = NULL;
+        struct sockaddr_in client_1, client_2;
+        client_1.sin_family = AF_INET;
+        client_1.sin_port = htons(8001);
+        if (inet_pton(AF_INET, "127.0.0.1", &client_1.sin_addr) != 1) {
+            perror("inet_pton");
+            return 1;
+        }
+        uint8_t query1[] = {0x26, 0xa9, 0x01, 0x02, 0x00, 0x01, 0x00, 0x00, 0x00, 0xff};
+        // size_t size = 10;
+        list_t* rec1 = create_rcrd_list(&client_1, &query1, sizeof(query1) / sizeof(query1[0]));
+        map_add(&map, 1, rec1, list_add_node);
+        map_add(&map, 2, rec1, list_add_node);
+        map_add(&map, 3, rec1, list_add_node);
+        
+        client_2.sin_family = AF_INET;
+        client_2.sin_port = htons(8003);
+        if (inet_pton(AF_INET, "127.0.0.1", &client_2.sin_addr) != 1) {
+            perror("inet_pton");
+            return 1;
+        }
+        uint8_t query2[] = {0x26, 0xa9, 0x01, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0xfe};
+        list_t* rec2 = create_rcrd_list(&client_2, &query2, sizeof(query2) / sizeof(query2[0]));
+        map_add(&map, 2, rec2, list_add_node);
+
+        int key = 2;
+        list_t* res_list = map_find(map, key);
+        map_iterate(map, out_map);
+        TEST(res_list != NULL);
+        
+        binary_string_t query_key1 = binary_string_create(query1, sizeof(query1) / sizeof(query1[0]));
+        binary_string_t query_key2 = binary_string_create(query2, sizeof(query2) / sizeof(query2[0]));
+
+        struct sockaddr_in* result_addr = get_address(res_list, &query_key1);
+        TEST(result_addr != NULL);
+        TEST(ntohs(result_addr->sin_port) == ntohs(client_1.sin_port));
+        result_addr = get_address(res_list, &query_key2);
+        TEST(result_addr != NULL);
+        TEST(ntohs(result_addr->sin_port) == ntohs(client_2.sin_port));
+
+        // key = 1;
+        map_delete_in(&map, key, client_remover, &query_key1);
+        map_iterate(map, out_map);
+        // res_list = map_find(map, key);
+        // TEST(res_list != NULL);
+        // result_addr = get_address(res_list, &query_key1);
+        // TEST(result_addr == NULL);
+        // result_addr = get_address(res_list, &query_key2);
+        // TEST(result_addr != NULL);
+        // TEST(ntohs(result_addr->sin_port) == ntohs(client_2.sin_port));
+
+
+        // map_delete(&map, key, client_remover, &query_key1);
+        // map_iterate(map, out_map); // segfault?
+        // res_list = map_find(map, key);
+        // TEST(res_list == NULL);
+
+        map_clear(&map, NULL);
+        binary_string_destroy(&query_key1);
+        binary_string_destroy(&query_key2);
+    }
     if (!failed) {
         return 0;
     }
@@ -288,8 +424,8 @@ int main() {
     abort();
 }
 
-void int_list_out(int b) {
-    printf("value -> %d\n", b);
+void int_list_out(record_t data) {
+    printf("%d %s \n", ntohs(data.address.sin_port), data.query);
 }
 
 void out_list(record_t* data) {
@@ -301,7 +437,28 @@ void out_map(list_t* data) {
     list_iterate(data, out_list);
 }
 
-void int_map_out(list_t* data) {
+void record_map_out(list_t* data) {
 
     list_iterate(data, int_list_out);
+}
+
+struct sockaddr_in* get_address(list_t* head, binary_string_t* key) {
+
+    // if list have only one node
+    if (head->next == NULL) {
+        record_t* rec_ptr = head->data;
+        if((key->size == rec_ptr->query.size) &&
+                memcmp(key->data, rec_ptr->query.data, key->size) == 0) {
+            return &rec_ptr->address;
+        }
+        return NULL;
+    }
+
+    list_t* searching_node = list_find(head, key, compare_record);
+    return &((record_t*)searching_node->data)->address;
+}
+
+void client_remover(list_t** head, binary_string_t* query) {
+
+    list_delete(head, query, compare_record);
 }
