@@ -3,8 +3,8 @@
 #include "map.h"
 
 
-static node_t* node_create(int key, void* data); // static
-static void map_rebalance(map_t* map, node_t* node); // static
+static node_t* node_create(int key, void* data);
+static void map_rebalance(map_t* map, node_t* node);
 static void right_rotate(map_t* map, node_t* node);
 static void left_rotate(map_t* map, node_t* node);
 static void iterate_helper(map_t* map, node_t* node, void(*iter)(void*));
