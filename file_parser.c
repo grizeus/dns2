@@ -7,6 +7,24 @@
 
 #define BUFFER_SIZE 256
 
+/**
+ * Parses a line of text based on a given key and returns a vector of strings.
+ * Each string represents a value associated with the key separated by commas.
+ *
+ * @param key The key to look for in the line.
+ * @param line string (an array of chars) of text to parse.
+ * @return Array of char* pointers containing the parsed values.
+ */
+static char** get_list(const char* key, char* line);
+/**
+ * Parses a line of text based on a given key and returns a string.
+ *
+ * @param key The key to look for in the line.
+ * @param line string (an array of chars) of text to parse.
+ * @return A string containing the parsed value.
+ */
+static char* get_string(const char* key, char* line);
+
 static char* trim_whitespaces(char* str) {
 
     if (str == NULL || *str == '\0') {
@@ -44,7 +62,7 @@ static void count_size(const char* key, const char* line, int* count) {
     }
 }
 
-char** get_list(const char* key, char* line) {
+static char** get_list(const char* key, char* line) {
 
     int count;
     count_size(key, line, &count);
@@ -79,7 +97,7 @@ char** get_list(const char* key, char* line) {
 
 }
 
-char* get_string(const char* key, char* line) {
+static char* get_string(const char* key, char* line) {
 
     char* current_token = strtok(line, "=");
 
@@ -108,7 +126,7 @@ char* get_string(const char* key, char* line) {
     return final_str;
 }
 
-void initialize(const char* filename, char** black_list, char* upstream) {
+void initialize(const char* filename, char** black_list, server_config_t* config) {
 
     FILE* file = fopen(filename, "r");
     if (file == NULL) {
@@ -120,12 +138,25 @@ void initialize(const char* filename, char** black_list, char* upstream) {
     while (fgets(buffer, sizeof(buffer), file)) {
         if (black_list == NULL) {
             black_list = get_list("Domains", buffer);
-        } else if (upstream == NULL) {
-            upstream = get_string("Upstream", buffer);
+        } else if (config->upstream_name == NULL) {
+            config->upstream_name = get_string("Upstream", buffer);
+        } else if (config->local_address == NULL) {
+            config->upstream_name = get_string("Local_addr", buffer);
+        } else if (config->port == 0) {
+            config->port = atoi(get_string("Port", buffer));
+        } else if (config->dns_port == 0) {
+            config->port = atoi(get_string("DNS_port", buffer));
         }
 
-        if (black_list != NULL && upstream != NULL)
+
+        if (black_list != NULL &&
+            config->upstream_name != NULL && 
+            config->local_address != NULL && 
+            config->port != 0 &&
+            config->dns_port != 0) {
+
             break;
+        }
     }
 
     fclose(file);
