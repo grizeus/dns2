@@ -155,6 +155,7 @@ int main() {
         list_iterate(head, out_list);
         list_t* res = list_find(&head, &query_key, compare_record);
         TEST(res == NULL);
+        list_clear(&head);
     }
     printf("\033[0;90mclear list\033[0;37m\n");
     {
@@ -174,7 +175,7 @@ int main() {
     printf("\033[1;34mmap test\033[0;37m\n");
     printf("\033[0;90madd to map\033[0;37m\n");
     {
-        map_t* map = NULL;
+        map_t* map = map_create();
         struct sockaddr_in client;
         client.sin_family = AF_INET;
         client.sin_port = htons(8001);
@@ -185,18 +186,20 @@ int main() {
         uint8_t* str[] = {0x26, 0xa9, 0x01, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00};
         size_t size = 9;
         list_t* rec1 = create_rcrd_list(&client, str, size);
-        map_add(&map, 300, rec1, list_add);
-        map_add(&map, 20, rec1, list_add);
-        map_add(&map, 69, rec1, list_add);
+        list_t* rec2 = create_rcrd_list(&client, str, size);
+        list_t* rec3 = create_rcrd_list(&client, str, size);
+        map_add(map, 300, rec1, list_add);
+        map_add(map, 20, rec2, list_add);
+        map_add(map, 69, rec3, list_add);
 
-        TEST(map != NULL);
+        TEST(map->root != map->sentinel);
         puts("Balance test");
-        TEST(map->key == 69);
-        map_clear(&map, NULL);
+        TEST(map->root->key == 69);
+        map_clear(map, list_clear);
     }
     printf("\033[0;90madd to map primitive\033[0;37m\n");
     {
-        map_t* map = NULL;
+        map_t* map = map_create();
         struct sockaddr_in client;
         client.sin_family = AF_INET;
         client.sin_port = htons(8001);
@@ -208,20 +211,20 @@ int main() {
         size_t size = 9;
         // list_t* rec1 = create_rcrd_list(&client, str, size);
         record_t* rec1 = create_rcrd(&client, str, size);
-        map_add(&map, 300, rec1, NULL);
-        map_add(&map, 20, rec1, NULL);
-        map_add(&map, 69, rec1, NULL);
+        map_add(map, 300, rec1, NULL);
+        map_add(map, 20, rec1, NULL);
+        map_add(map, 69, rec1, NULL);
 
         TEST(map != NULL);
-        map_clear(&map, NULL);
+        map_clear(map, NULL);
 
-        map_add(&map, 1, 10, NULL);
+        map_add(map, 1, 10, NULL);
         int result = map_find(map, 1);
         TEST(result == 10);
     }
     printf("\033[0;90msearch in map\033[0;37m\n");
     {
-        map_t* map = NULL;
+        map_t* map = map_create();
         struct sockaddr_in client_1, client_2;
         client_1.sin_family = AF_INET;
         client_1.sin_port = htons(8001);
@@ -232,9 +235,11 @@ int main() {
         uint8_t query1[] = {0x26, 0xa9, 0x01, 0x02, 0x00, 0x01, 0x00, 0x00, 0x00, 0xff};
         size_t size = 10;
         list_t* rec1 = create_rcrd_list(&client_1, &query1, size);
-        map_add(&map, 1, rec1, list_add_node);
-        map_add(&map, 2, rec1, list_add_node);
-        map_add(&map, 3, rec1, list_add_node);
+        list_t* rec2 = create_rcrd_list(&client_1, &query1, size);
+        list_t* rec3 = create_rcrd_list(&client_1, &query1, size);
+        map_add(map, 1, rec1, list_add_node);
+        map_add(map, 2, rec2, list_add_node);
+        map_add(map, 3, rec3, list_add_node);
 
         int key = 2;
         list_t* res_list = map_find(map, key);
@@ -253,12 +258,12 @@ int main() {
             TEST(ntohs(res_addr1.sin_port) == ntohs(client_1.sin_port));
         }
 
-        map_clear(&map, NULL);
+        map_clear(map, list_clear);
         binary_string_destroy(&query_key1);
     }
     printf("\033[0;90msearch in map with separate chaining\033[0;37m\n");
     {
-        map_t* map = NULL;
+        map_t* map = map_create();
         struct sockaddr_in client_1, client_2;
         client_1.sin_family = AF_INET;
         client_1.sin_port = htons(8001);
@@ -269,9 +274,11 @@ int main() {
         uint8_t query1[] = {0x26, 0xa9, 0x01, 0x02, 0x00, 0x01, 0x00, 0x00, 0x00, 0xff};
         size_t size = 10;
         list_t* rec1 = create_rcrd_list(&client_1, &query1, size);
-        map_add(&map, 1, rec1, list_add_node);
-        map_add(&map, 2, rec1, list_add_node);
-        map_add(&map, 3, rec1, list_add_node);
+        list_t* rec2 = create_rcrd_list(&client_1, &query1, size);
+        list_t* rec3 = create_rcrd_list(&client_1, &query1, size);
+        map_add(map, 1, rec1, list_add_node);
+        map_add(map, 2, rec2, list_add_node);
+        map_add(map, 3, rec3, list_add_node);
         
         client_2.sin_family = AF_INET;
         client_2.sin_port = htons(8003);
@@ -280,8 +287,8 @@ int main() {
             return 1;
         }
         uint8_t query2[] = {0x26, 0xa9, 0x01, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0xfe};
-        list_t* rec2 = create_rcrd_list(&client_2, &query2, size);
-        map_add(&map, 2, rec2, list_add_node);
+        list_t* rec2_2 = create_rcrd_list(&client_2, &query2, size);
+        map_add(map, 2, rec2_2, list_add_node);
 
         int key = 2;
         list_t* res_list = map_find(map, key);
@@ -307,13 +314,13 @@ int main() {
             TEST(ntohs(res_addr2.sin_port) == ntohs(client_2.sin_port));
         }
 
-        map_clear(&map, NULL);
+        map_clear(map, list_clear);
         binary_string_destroy(&query_key1);
         binary_string_destroy(&query_key2);
     }
     printf("\033[0;90mtest get_address func\033[0;37m\n");
     {
-        map_t* map = NULL;
+        map_t* map = map_create();
         struct sockaddr_in client_1, client_2;
         client_1.sin_family = AF_INET;
         client_1.sin_port = htons(8001);
@@ -324,9 +331,11 @@ int main() {
         uint8_t query1[] = {0x26, 0xa9, 0x01, 0x02, 0x00, 0x01, 0x00, 0x00, 0x00, 0xff};
         size_t size = 10;
         list_t* rec1 = create_rcrd_list(&client_1, &query1, size);
-        map_add(&map, 1, rec1, list_add_node);
-        map_add(&map, 2, rec1, list_add_node);
-        map_add(&map, 3, rec1, list_add_node);
+        list_t* rec2 = create_rcrd_list(&client_1, &query1, size);
+        list_t* rec3 = create_rcrd_list(&client_1, &query1, size);
+        map_add(map, 1, rec1, list_add_node);
+        map_add(map, 2, rec2, list_add_node);
+        map_add(map, 3, rec3, list_add_node);
         
         client_2.sin_family = AF_INET;
         client_2.sin_port = htons(8003);
@@ -335,8 +344,8 @@ int main() {
             return 1;
         }
         uint8_t query2[] = {0x26, 0xa9, 0x01, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0xfe};
-        list_t* rec2 = create_rcrd_list(&client_2, &query2, size);
-        map_add(&map, 2, rec2, list_add_node);
+        list_t* rec2_2 = create_rcrd_list(&client_2, &query2, size);
+        map_add(map, 2, rec2_2, list_add_node);
 
         int key = 2;
         list_t* res_list = map_find(map, key);
@@ -350,13 +359,13 @@ int main() {
         result_addr = get_address(res_list, &query_key2);
         TEST(ntohs(result_addr->sin_port) == ntohs(client_2.sin_port));
 
-        map_clear(&map, NULL);
+        map_clear(map, list_clear);
         binary_string_destroy(&query_key1);
         binary_string_destroy(&query_key2);
     }
     printf("\033[0;90mremove from map\033[0;37m\n");
     {
-        map_t* map = NULL;
+        map_t* map = map_create();
         struct sockaddr_in client_1, client_2;
         client_1.sin_family = AF_INET;
         client_1.sin_port = htons(8001);
@@ -365,11 +374,12 @@ int main() {
             return 1;
         }
         uint8_t query1[] = {0x26, 0xa9, 0x01, 0x02, 0x00, 0x01, 0x00, 0x00, 0x00, 0xff};
-        // size_t size = 10;
         list_t* rec1 = create_rcrd_list(&client_1, &query1, sizeof(query1) / sizeof(query1[0]));
-        map_add(&map, 1, rec1, list_add_node);
-        map_add(&map, 2, rec1, list_add_node);
-        map_add(&map, 3, rec1, list_add_node);
+        list_t* rec2 = create_rcrd_list(&client_1, &query1, sizeof(query1) / sizeof(query1[0]));
+        list_t* rec3 = create_rcrd_list(&client_1, &query1, sizeof(query1) / sizeof(query1[0]));
+        map_add(map, 1, rec1, list_add_node);
+        map_add(map, 2, rec2, list_add_node);
+        map_add(map, 3, rec3, list_add_node);
         
         client_2.sin_family = AF_INET;
         client_2.sin_port = htons(8003);
@@ -378,8 +388,8 @@ int main() {
             return 1;
         }
         uint8_t query2[] = {0x26, 0xa9, 0x01, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0xfe};
-        list_t* rec2 = create_rcrd_list(&client_2, &query2, sizeof(query2) / sizeof(query2[0]));
-        map_add(&map, 2, rec2, list_add_node);
+        list_t* rec2_2 = create_rcrd_list(&client_2, &query2, sizeof(query2) / sizeof(query2[0]));
+        map_add(map, 2, rec2_2, list_add_node);
 
         int key = 2;
         list_t* res_list = map_find(map, key);
@@ -396,24 +406,23 @@ int main() {
         TEST(result_addr != NULL);
         TEST(ntohs(result_addr->sin_port) == ntohs(client_2.sin_port));
 
-        // key = 1;
-        map_delete_in(&map, key, client_remover, &query_key1);
-        map_iterate(map, out_map);
-        // res_list = map_find(map, key);
-        // TEST(res_list != NULL);
-        // result_addr = get_address(res_list, &query_key1);
-        // TEST(result_addr == NULL);
-        // result_addr = get_address(res_list, &query_key2);
-        // TEST(result_addr != NULL);
-        // TEST(ntohs(result_addr->sin_port) == ntohs(client_2.sin_port));
+        map_delete(map, key, client_remover, &query_key1, NULL);
+        res_list = map_find(map, key);
+        TEST(res_list != NULL);
+        result_addr = get_address(res_list, &query_key1);
+        TEST(result_addr == NULL);
+        result_addr = get_address(res_list, &query_key2);
+        TEST(result_addr != NULL);
+        TEST(ntohs(result_addr->sin_port) == ntohs(client_2.sin_port));
 
 
-        // map_delete(&map, key, client_remover, &query_key1);
-        // map_iterate(map, out_map); // segfault?
-        // res_list = map_find(map, key);
-        // TEST(res_list == NULL);
+        key = 1;
+        map_delete(map, key, client_remover, &query_key1, NULL);
+        map_iterate(map, out_map); // segfault?
+        res_list = map_find(map, key);
+        TEST(res_list == NULL);
 
-        map_clear(&map, NULL);
+        map_clear(map, list_clear);
         binary_string_destroy(&query_key1);
         binary_string_destroy(&query_key2);
     }
