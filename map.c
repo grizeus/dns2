@@ -177,7 +177,7 @@ void left_rotate(map_t* map, node_t* node) {
 
 void* map_find(map_t* map, int key) {
 
-    if(map->root == NULL) {
+    if(map->root == map->sentinel) {
         return NULL;
     }
 
@@ -197,8 +197,8 @@ void* map_find(map_t* map, int key) {
 node_t* map_find_node(map_t* map, int key) {
 
 
-    if(map->root == NULL) {
-        return NULL;
+    if(map->root == map->sentinel) {
+        return map->sentinel;
     }
 
     node_t* current = map->root;
@@ -216,9 +216,9 @@ node_t* map_find_node(map_t* map, int key) {
 
 static void iterate_helper(map_t* map, node_t* node, void(*iter)(void*)) {
     if (node != map->sentinel) {
-        iterate_helper(map, map->root->left, iter);
+        iterate_helper(map, node->left, iter);
         (*iter)(node->data);
-        iterate_helper(map, map->root->right, iter);
+        iterate_helper(map, node->right, iter);
     }
 }
 
@@ -229,7 +229,7 @@ void map_iterate(map_t* map, void(*iter)(void*)) {
 
 void map_delete(map_t* map, int key, void(*deleter)(void*, void*), void* additional_key, void(*eraser)(void*)) {
 
-    if (map->root == NULL) {
+    if (map->root == map->sentinel) {
         return;
     }
     node_t* node_to_delete = map_find_node(map, key);
@@ -244,16 +244,16 @@ void map_delete(map_t* map, int key, void(*deleter)(void*, void*), void* additio
 
     // perform delete from inner structure
     if (eraser) {
-        (*eraser)(node_to_delete->data);
+        (*eraser)(&(node_to_delete->data));
     }
     if (deleter) {
         (*deleter)(&(node_to_delete->data), additional_key);
         if (node_to_delete->data == NULL) {
             is_empty = 1;
         }
-    }
-    if (!is_empty) {
-        return;
+        if (!is_empty) {
+            return;
+        }
     }
 
     if (node_to_delete->left == map->sentinel) {
