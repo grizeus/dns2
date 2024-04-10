@@ -1,6 +1,8 @@
 #ifndef MAP_H
 #define MAP_H
 
+#include <stdint.h>
+
 typedef struct map map_t;
 typedef struct node node_t;
 
@@ -18,7 +20,7 @@ struct node {
     node_t* parent;
     node_t* left;
     node_t* right;
-    int key;
+    uint32_t key;
     color_e color;
 };
 

@@ -34,7 +34,7 @@ map_t* map_create() {
     map_t* new_map = (map_t*)malloc(sizeof(map_t));
 
     if (new_map) {
-        new_map->sentinel = node_create(-1, NULL);
+        new_map->sentinel = node_create(0, NULL);
         new_map->sentinel->color = BLACK;
         new_map->sentinel->left = NULL;
         new_map->sentinel->right = NULL;
