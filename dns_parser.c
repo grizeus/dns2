@@ -1,4 +1,5 @@
 #include <netinet/in.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -8,18 +9,31 @@
 #define MAX_DOMAIN_LEN 255
 #define QTYPE_SIZE     2
 #define QCLASS_SIZE    2
+#define ID_SIZE        2
+#define FNV_PRIME      16777619
+#define FNV_OFFSET     2166136261u
 
-char* parse_query(const char* buffer, int payload_len, uint16_t* id, uint8_t** query) {
+static uint32_t fnv1a_hash_func(const uint8_t* str) {
 
-    const uint8_t* dns_payload = (const uint8_t*)buffer;
+    uint32_t hash = FNV_OFFSET;
+    while (*str) {
+        hash ^= (uint32_t)*str++;
+        hash ^= FNV_PRIME;
+    }
+
+    return hash;
+}
+// i need to retrieve hash value of dns name
+char* parse_query(char* buffer, int payload_len, uint32_t* question_hash, uint32_t* client_hash) {
+
+    uint8_t* dns_payload = (uint8_t*)buffer;
 
     dns_header_t* dns_header = (dns_header_t*)dns_payload;
-    *id = ntohs(dns_header->id);
-    int query_len = payload_len - sizeof(dns_header_t);
+    int question_len = payload_len - sizeof(dns_header_t);
     if ((ntohs(dns_header->flags) & 0x8000) == 0) {
 
         const uint8_t* question = dns_payload + sizeof(dns_header_t);
-        char* extracted = malloc(query_len);
+        char* extracted = malloc(question_len);
 
         if (extracted == NULL) {
             perror("Memory allocation failed");
@@ -58,64 +72,65 @@ char* parse_query(const char* buffer, int payload_len, uint16_t* id, uint8_t** q
             free(extracted);
             return NULL;
         }
-        *query = malloc(query_len);
-        memcpy(*query, question, query_len);
+        // hash dns question
+        *question_hash = fnv1a_hash_func(question);
+        // create string with id + question
+        uint8_t* id_w_question = (uint8_t*)malloc(question_len + ID_SIZE);
+        // copy id first, and then all question
+        memcpy(id_w_question, dns_payload, ID_SIZE);
+        memcpy(id_w_question + ID_SIZE, question, question_len);
 
+        // hash this to identificate our client (specific ID + question)
+        *client_hash = fnv1a_hash_func(id_w_question);
+        free(id_w_question);
         return extracted;
     }
 
     return NULL;
 }
 
-// void parse_responce(const char* buffer, int payload_len, uint16_t* id, uint8_t** query, int* query_len) {
+void parse_responce(char* buffer, int payload_len, binary_string_t* answer, uint32_t* question_hash, uint32_t* client_hash) {
 
-//     const uint8_t* dns_payload = (const uint8_t*)buffer;
-//     dns_header_t* dns_header = (dns_header_t*)dns_payload;
-//     *id = ntohs(dns_header->id);
-
-//     if ((ntohs(dns_header->flags) & 0x8000) != 0) {
-
-//         const uint8_t* query_resp = dns_payload + sizeof(struct dns_header);
-//         int i = 0;
-//         *query_len = 0; // initialize
-//         *query = malloc(payload_len - sizeof(struct dns_header) + 1);
-//         while (i < payload_len) {
-//             int label_len = query_resp[i];
-
-//             if (label_len == 0) {
-//                 *query_len += QTYPE_SIZE + QCLASS_SIZE + 1;
-//                 break;
-//             }
-//             i += label_len + 1;
-//             *query_len += label_len + 1;
-//         }
-//         memcpy(*query, query_resp, *query_len);
-//     }
-// }
-
-void parse_responce(const char* buffer, int payload_len, uint16_t* id, binary_string_t* query) {
-
-    const uint8_t* dns_payload = (const uint8_t*)buffer;
+    uint8_t* dns_payload = (uint8_t*)buffer;
     dns_header_t* dns_header = (dns_header_t*)dns_payload;
-    *id = ntohs(dns_header->id);
 
     if ((ntohs(dns_header->flags) & 0x8000) != 0) {
-
-        const uint8_t* query_resp = dns_payload + sizeof(struct dns_header);
+        // question_answer is starting point of question and answer in response
+        uint8_t* question_answer = dns_payload + sizeof(struct dns_header);
         int i = 0;
-        size_t query_len = 0; // initialize
-        query->data = malloc(payload_len - sizeof(struct dns_header) + 1);
+        size_t question_len = 0; // initialize
+        // find length of question
         while (i < payload_len) {
-            int label_len = query_resp[i];
+            int label_len = question_answer[i];
 
             if (label_len == 0) {
-                query_len += QTYPE_SIZE + QCLASS_SIZE + 1;
+                question_len += QTYPE_SIZE + QCLASS_SIZE + 1;
                 break;
             }
             i += label_len + 1;
-            query_len += label_len + 1;
+            question_len += label_len + 1;
         }
-        memcpy(query->data, query_resp, query_len);
-        query->size = query_len;
+        uint8_t* question = (uint8_t*)malloc(question_len);
+        memcpy(question, question_answer, question_len);
+        *question_hash = fnv1a_hash_func(question);
+        
+        // create string with id + question
+        uint8_t* id_w_question = (uint8_t*)malloc(question_len + ID_SIZE);
+        // copy id first, and then all question
+        memcpy(id_w_question, dns_payload, ID_SIZE);
+        memcpy(id_w_question + ID_SIZE, question, question_len);
+
+        // hash this to identificate our client (specific ID + question)
+        *client_hash = fnv1a_hash_func(id_w_question);
+        free(question);
+        free(id_w_question);
+
+        size_t answer_len = payload_len - (sizeof(struct dns_header) + question_len);
+        // move pointer to begin of answer part
+        uint8_t* answer_p = question_answer + question_len;
+        // allocate memory for answer
+        answer->data = (uint8_t*)malloc(answer_len);
+        memcpy(answer->data, answer_p, answer_len);
+        answer->size = answer_len;
     }
 }
