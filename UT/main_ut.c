@@ -8,6 +8,7 @@
 #include "../query_record.h"
 #include "../map.h"
 #include "../linked_list.h"
+#include "../dns_parser.h"
 
 static int failed = 0;
 void out_map(list_t* data);
@@ -144,15 +145,12 @@ int main() {
         list_add(&head, rec1);
         list_add(&head, rec1);
         list_add(&head, rec1);
-        list_iterate(head, out_list);
         TEST(head != NULL);
         TEST(head->next != NULL);
         TEST(head->next->next != NULL);
         
         binary_string_t query_key = binary_string_create(query2, sizeof(query2)/sizeof(query2[0]));
         list_delete(&head, &query_key, compare_record);
-        // TEST(head->next->next == NULL);
-        list_iterate(head, out_list);
         list_t* res = list_find(&head, &query_key, compare_record);
         TEST(res == NULL);
         list_clear(&head);
@@ -209,7 +207,6 @@ int main() {
         }
         uint8_t* str[] = {0x26, 0xa9, 0x01, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00};
         size_t size = 9;
-        // list_t* rec1 = create_rcrd_list(&client, str, size);
         record_t* rec1 = create_rcrd(&client, str, size);
         map_add(map, 300, rec1, NULL);
         map_add(map, 20, rec1, NULL);
@@ -221,6 +218,8 @@ int main() {
         map_add(map, 1, 10, NULL);
         int result = map_find(map, 1);
         TEST(result == 10);
+        result = map_find(map, 2);
+        TEST(result == NULL);
     }
     printf("\033[0;90msearch in map\033[0;37m\n");
     {
@@ -393,7 +392,6 @@ int main() {
 
         int key = 2;
         list_t* res_list = map_find(map, key);
-        map_iterate(map, out_map);
         TEST(res_list != NULL);
         
         binary_string_t query_key1 = binary_string_create(query1, sizeof(query1) / sizeof(query1[0]));
@@ -418,13 +416,34 @@ int main() {
 
         key = 1;
         map_delete(map, key, client_remover, &query_key1, NULL);
-        map_iterate(map, out_map); // segfault?
         res_list = map_find(map, key);
         TEST(res_list == NULL);
 
         map_clear(map, list_clear);
         binary_string_destroy(&query_key1);
         binary_string_destroy(&query_key2);
+    }
+    printf("\033[0;90mparse function\033[0;37m\n");
+    {
+        char query[] = {
+            0x52, 0xc3, 0x01, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x03, 0x77, 0x77, 0x77,
+            0x06, 0x67, 0x6f, 0x6f, 0x67, 0x6c, 0x65, 0x03, 0x63, 0x6f, 0x6d, 0x00, 0x00, 0x1c, 0x00, 0x01
+        };
+        uint32_t quest_hash = 0;
+        uint32_t qcli_hash = 0;
+        char* dns_name = parse_query(query, sizeof(query), &quest_hash, &qcli_hash);
+        uint8_t response[] = {
+            0x52, 0xc3, 0x81, 0x80, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x03, 0x77, 0x77, 0x77,
+            0x06, 0x67, 0x6f, 0x6f, 0x67, 0x6c, 0x65, 0x03, 0x63, 0x6f, 0x6d, 0x00, 0x00, 0x1c, 0x00, 0x01,
+            0xc0, 0x0c, 0x00, 0x1c, 0x00, 0x01, 0x00, 0x00, 0x01, 0x0f, 0x00, 0x10, 0x2a, 0x00, 0x14, 0x50,
+            0x40, 0x1b, 0x08, 0x0e, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x20, 0x04
+        };
+        uint32_t resp_hash = 0;
+        uint32_t rcli_hash = 0;
+        binary_string_t answer;
+        parse_responce(response, sizeof(response), &answer, &resp_hash, &rcli_hash);
+        TEST(quest_hash == resp_hash);
+        TEST(qcli_hash == rcli_hash);
     }
     if (!failed) {
         return 0;
@@ -451,23 +470,23 @@ void record_map_out(list_t* data) {
     list_iterate(data, int_list_out);
 }
 
-struct sockaddr_in* get_address(list_t* head, binary_string_t* key) {
+// struct sockaddr_in* get_address(list_t* head, binary_string_t* key) {
 
-    // if list have only one node
-    if (head->next == NULL) {
-        record_t* rec_ptr = head->data;
-        if((key->size == rec_ptr->query.size) &&
-                memcmp(key->data, rec_ptr->query.data, key->size) == 0) {
-            return &rec_ptr->address;
-        }
-        return NULL;
-    }
+//     // if list have only one node
+//     if (head->next == NULL) {
+//         record_t* rec_ptr = head->data;
+//         if((key->size == rec_ptr->query.size) &&
+//                 memcmp(key->data, rec_ptr->query.data, key->size) == 0) {
+//             return &rec_ptr->address;
+//         }
+//         return NULL;
+//     }
 
-    list_t* searching_node = list_find(head, key, compare_record);
-    return &((record_t*)searching_node->data)->address;
-}
+//     list_t* searching_node = list_find(head, key, compare_record);
+//     return &((record_t*)searching_node->data)->address;
+// }
 
-void client_remover(list_t** head, binary_string_t* query) {
+// void client_remover(list_t** head, binary_string_t* query) {
 
-    list_delete(head, query, compare_record);
-}
+//     list_delete(head, query, compare_record);
+// }

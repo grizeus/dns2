@@ -12,6 +12,7 @@ file(GLOB src
         "../linked_list.c"
         "../map.c"
         "../query_record.c"
+        "../utility.c"
         "main_ut.c"
 )
 
