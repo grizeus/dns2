@@ -9,6 +9,7 @@
 #include "../map.h"
 #include "../linked_list.h"
 #include "../dns_parser.h"
+#include "../utility.h"
 
 static int failed = 0;
 void out_map(list_t* data);
@@ -438,12 +439,18 @@ int main() {
             0xc0, 0x0c, 0x00, 0x1c, 0x00, 0x01, 0x00, 0x00, 0x01, 0x0f, 0x00, 0x10, 0x2a, 0x00, 0x14, 0x50,
             0x40, 0x1b, 0x08, 0x0e, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x20, 0x04
         };
+        
         uint32_t resp_hash = 0;
         uint32_t rcli_hash = 0;
         binary_string_t answer;
         parse_responce(response, sizeof(response), &answer, &resp_hash, &rcli_hash);
         TEST(quest_hash == resp_hash);
         TEST(qcli_hash == rcli_hash);
+        TEST(answer.size == (sizeof(response) - sizeof(query)));
+
+        size_t new_response_size;
+        char* new_response = build_response(query, sizeof(query), &answer, &new_response_size);
+        TEST(memcmp(new_response, response, new_response_size) == 0);
     }
     if (!failed) {
         return 0;
