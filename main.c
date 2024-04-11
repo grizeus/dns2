@@ -8,9 +8,9 @@
 #include <string.h>
 #include <unistd.h>
 
+#include "binary_string.h"
 #include "communicate.h"
 #include "utility.h"
-#include "query_record.h"
 #include "dns_parser.h"
 #include "map.h"
 
@@ -60,9 +60,14 @@ int main(int argc, char** argv) {
             if (!answer) {
                 if (send_to(dns_sockfd, message, recv_cl_len, &dns_addr)) {
                     map_add(clients, client_id, client_addr, NULL);
+                    free(message);
                 }
             } else {
-
+                size_t response_len;
+                char* response = build_response(message, recv_cl_len, answer, &response_len);
+                send_to(sockfd, response, response_len, client_addr);
+                free(response);
+                free(message);
             }
             is_received = 1;
         }
