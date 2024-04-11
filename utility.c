@@ -4,7 +4,6 @@
 #include <arpa/inet.h>
 
 #include "utility.h"
-#include "query_record.h"
 
 static void query_setup(char query[]);
 
@@ -40,39 +39,6 @@ void setup_sockets(int* sockfd, int* dns_sockfd,
         perror("Binding failed");
         exit(1);
     }
-}
-
-list_t* create_record(const struct sockaddr_in* address, const uint8_t* query, size_t size) {
-    record_t* new_record = (record_t*)malloc(sizeof(record_t));
-        if (new_record == NULL) {
-            return NULL;
-        }
-        
-        new_record->address = *address;
-        new_record->query = binary_string_create(query, size);
-        list_t* new_list = list_new(new_record);
-
-        return new_list;
-}
-struct sockaddr_in* get_address(list_t* head, binary_string_t* key) {
-
-    // if list have only one node
-    if (head->next == NULL) {
-        record_t* rec_ptr = head->data;
-        if((key->size == rec_ptr->query.size) &&
-                memcmp(key->data, rec_ptr->query.data, key->size) == 0) {
-            return &rec_ptr->address;
-        }
-        return NULL;
-    }
-
-    list_t* searching_node = list_find(head, key, compare_record);
-    return &((record_t*)searching_node->data)->address;
-}
-
-void client_remover(list_t** head, binary_string_t* query) {
-
-    list_delete(head, query, compare_record);
 }
 
 char* build_response(char* initial_query, size_t query_size, binary_string_t* answer, size_t* new_size) {
