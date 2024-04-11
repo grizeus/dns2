@@ -104,7 +104,3 @@ void list_clear(list_t** head) {
 
     *head = NULL;
 }
-// int is_one_node(const linked_list_t* list) {
-//
-//     return (list->head != NULL && list->head == list->tail);
-// }
