@@ -10,16 +10,14 @@
 
 #include "communicate.h"
 #include "utility.h"
-#include "binary_string.h"
 #include "query_record.h"
-#include "file_parser.h"
 #include "dns_parser.h"
-#include "linked_list.h"
 #include "map.h"
 
-int main(int argc, char** argv)
-{
-    map_t clients;
+int main(int argc, char** argv) {
+
+    map_t* clients = map_create();
+    map_t* lookup = map_create();
     server_config_t config;
     char** black_list;
     initialize("file.ini", black_list, &config);
@@ -42,35 +40,43 @@ int main(int argc, char** argv)
         ssize_t recv_cl_len;
         char* message;
         int is_received = 0;
-        uint16_t id;
+        uint32_t dns_id;
+        uint32_t client_id;
         uint8_t* query;
+
         if ((message = receive_from(sockfd, client_addr, &recv_cl_len)) != NULL) {
 
-            char* dns_name = parse_query(message, recv_cl_len, &id, &query);
-            if (in_list(dns_name, black_list))
-            {
+            char* dns_name = parse_query(message, recv_cl_len, &dns_id, &client_id);
+            if (in_list(dns_name, black_list)) {
                 send_to(sockfd, "Error", 6, client_addr);
+                free(dns_name);
                 continue;
             }
-            if (send_to(dns_sockfd, message, recv_cl_len, &dns_addr)) {
-                list_t* new_record = create_record(client_addr, query, recv_cl_len);
-                map_add(&clients, id, new_record, list_add_node);
+            free(dns_name);
+            // 1. search in cache for match query with responce
+            // 2. if success, return response to client
+            // 3. if not, send to upstream, return response from upstream and save into cache table
+            binary_string_t* answer = map_find(lookup, dns_id);
+            if (!answer) {
+                if (send_to(dns_sockfd, message, recv_cl_len, &dns_addr)) {
+                    map_add(clients, client_id, client_addr, NULL);
+                }
+            } else {
+
             }
             is_received = 1;
         }
-        binary_string_t response_query;
-        if (message == receive_from(dns_sockfd, client_addr, &recv_cl_len))
-        {
-            parse_responce(message, recv_cl_len, &id, &response_query);
-            list_t* result = map_find(&clients, id);
-            client_addr = get_address(result, &response_query);
+        binary_string_t response;
+        if (message == receive_from(dns_sockfd, client_addr, &recv_cl_len)) {
+            parse_responce(message, recv_cl_len, &response, &dns_id, &client_id);
+            client_addr = map_find(clients, client_id);
             if (send_to(sockfd, message, recv_cl_len, client_addr)) {
-                map_delete(&clients, id, client_remover, &response_query, NULL);
+                map_add(lookup, dns_id, &response, NULL);
+                map_delete(clients, client_id, NULL, NULL, NULL);
             }
             is_received = 1;
         }
-        if (!is_received)
-        {
+        if (!is_received) {
             usleep(10000);
         }
     }
