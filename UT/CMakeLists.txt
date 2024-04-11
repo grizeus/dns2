@@ -9,9 +9,7 @@ file(GLOB src
         "../communicate.c"
         "../dns_parser.c"
         "../file_parser.c"
-        "../linked_list.c"
         "../map.c"
-        "../query_record.c"
         "../utility.c"
         "main_ut.c"
 )
