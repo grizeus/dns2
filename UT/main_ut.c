@@ -8,6 +8,7 @@
 #include "../map.h"
 #include "../dns_parser.h"
 #include "../utility.h"
+#include "../file_parser.h"
 
 static int failed = 0;
 
@@ -20,6 +21,28 @@ int test(int pass, const char* msg, const char* file, int line) {
     }
 
     return pass;
+}
+
+void create_ini(const char* filename) {
+
+    FILE* new_file;
+    char* data[] = {"Domains= vk.com, x.com\n"};
+
+    new_file = fopen(filename, "w");
+    if (new_file == NULL) {
+        fprintf(stderr, "Error opening file.\n");
+        exit(1);
+    }
+    size_t lines = sizeof(data) / sizeof(data[0]);
+    for (size_t i = 0; i < lines; ++i){
+        if (fputs(data[i], new_file) == EOF) {
+            fprintf(stderr, "Error writing to file.\n");
+            fclose(new_file);
+            exit(1);
+        }
+    }
+    
+    fclose(new_file);
 }
 
 #define TEST(EX) (void)(test (EX, #EX, __FILE__, __LINE__))
@@ -149,7 +172,7 @@ int main() {
 
         map_clear(map, NULL);
     }
-    printf("\033[0;90mparse function\033[0;37m\n");
+    printf("\033[0;90mparse dns function\033[0;37m\n");
     {
         char query[] = {
             0x52, 0xc3, 0x01, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x03, 0x77, 0x77, 0x77,
@@ -158,7 +181,7 @@ int main() {
         uint32_t quest_hash = 0;
         uint32_t qcli_hash = 0;
         char* dns_name = parse_query(query, sizeof(query), &quest_hash, &qcli_hash);
-        uint8_t response[] = {
+        char response[] = {
             0x52, 0xc3, 0x81, 0x80, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x03, 0x77, 0x77, 0x77,
             0x06, 0x67, 0x6f, 0x6f, 0x67, 0x6c, 0x65, 0x03, 0x63, 0x6f, 0x6d, 0x00, 0x00, 0x1c, 0x00, 0x01,
             0xc0, 0x0c, 0x00, 0x1c, 0x00, 0x01, 0x00, 0x00, 0x01, 0x0f, 0x00, 0x10, 0x2a, 0x00, 0x14, 0x50,
@@ -178,6 +201,20 @@ int main() {
         TEST(memcmp(new_response, response, new_response_size) == 0);
         binary_string_destroy(&answer);
         free(new_response);
+    }
+    printf("\033[0;90mparse file function\033[0;37m\n");
+    {
+        const char* filename = "config.ini";
+        create_ini(filename);
+        char** black_list = NULL;
+        initialize_black_list(filename, &black_list);
+        TEST(in_list("vk.com", black_list) == 1);
+        TEST(in_list("x.com", black_list) == 1);
+        TEST(in_list("raga.com", black_list) == 0);
+        for (size_t i = 0; black_list[i] != NULL; ++i) {
+            free(black_list[i]);
+        }
+        free(black_list);
     }
     if (!failed) {
         return 0;
