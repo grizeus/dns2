@@ -1,23 +1,14 @@
 #ifndef FILE_PARSER_H
 #define FILE_PARSER_H
 
-typedef struct {
-    char* upstream_name;
-    char* local_address;
-    int port;
-    int dns_port;
-} server_config_t;
-
-
 /**
  * Combine get_list and get_string function to initialize variables from .ini
  * file.
  *
  * @param filename File from which to read
  * @param black_list Vector containting forbidden addresses
- * @param upstream String containting address of upstream DNS server
  * */
-void initialize(const char* filename, char** black_list, server_config_t* config);
+void initialize_black_list(const char* filename, char** black_list);
 /**
  * @brief Checks if a target string is in a list of strings.
  *
