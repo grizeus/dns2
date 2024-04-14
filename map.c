@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <stdio.h>
 
 #include "map.h"
 
@@ -190,7 +191,7 @@ void* map_find(map_t* map, int key) {
             current = current->right;
         }
     }
-    
+
     return current->data;
 }
 
@@ -210,7 +211,7 @@ node_t* map_find_node(map_t* map, int key) {
             current = current->right;
         }
     }
-    
+
     return current;
 }
 
@@ -276,7 +277,7 @@ void map_delete(map_t* map, int key, void(*deleter)(void*, void*), void* additio
             minimum_node->right = node_to_delete->right;
             minimum_node->right->parent = minimum_node;
         }
-        
+
         transplant(map, node_to_delete, minimum_node);
         minimum_node->left = node_to_delete->left;
         minimum_node->left->parent = minimum_node;
@@ -290,7 +291,7 @@ void map_delete(map_t* map, int key, void(*deleter)(void*, void*), void* additio
     if (node_to_delete == map->root) {
         map->root = successor;
     }
-    
+
     free(node_to_delete);
 }
 
@@ -298,7 +299,7 @@ static void delete_fixup(map_t* map, node_t* node) {
 
     node_t* sibling;
     while (node != map->root && node->color == BLACK) {
-        
+
         if (node == node->parent->left) {
             sibling = node->parent->right;
 
