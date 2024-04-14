@@ -5,6 +5,9 @@
 
 #include "utility.h"
 
+#define PORT     8080
+#define DNS_PORT 53
+
 static void query_setup(char query[]);
 
 void setup_sockets(int* sockfd, int* dns_sockfd,
@@ -28,14 +31,14 @@ void setup_sockets(int* sockfd, int* dns_sockfd,
     memset(dns_addr, 0, sizeof(*dns_addr));
 
     server_addr->sin_family = AF_INET;
-    server_addr->sin_port = htons(config->port);
+    server_addr->sin_port = htons(PORT);
     inet_pton(AF_INET, config->local_address, &(server_addr->sin_addr));
 
     dns_addr->sin_family = AF_INET;
-    dns_addr->sin_port = htons(config->dns_port);
+    dns_addr->sin_port = htons(DNS_PORT);
     inet_pton(AF_INET, config->upstream_name, &(dns_addr->sin_addr));
 
-    if (bind(*sockfd, (const struct sockaddr *)&server_addr, sizeof(*server_addr)) < 0) {
+    if (bind(*sockfd, (const struct sockaddr *)server_addr, sizeof(struct sockaddr_in)) < 0) {
         perror("Binding failed");
         exit(1);
     }
