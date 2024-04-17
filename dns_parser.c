@@ -89,7 +89,7 @@ char* parse_query(char* buffer, int payload_len, uint32_t* question_hash, uint32
     return NULL;
 }
 
-void parse_responce(char* buffer, int payload_len, binary_string_t* answer, uint32_t* question_hash, uint32_t* client_hash) {
+void parse_response(char* buffer, int payload_len, binary_string_t* answer, uint32_t* question_hash, uint32_t* client_hash) {
 
     uint8_t* dns_payload = (uint8_t*)buffer;
     dns_header_t* dns_header = (dns_header_t*)dns_payload;
@@ -123,14 +123,18 @@ void parse_responce(char* buffer, int payload_len, binary_string_t* answer, uint
         // hash this to identificate our client (specific ID + question)
         *client_hash = fnv1a_hash_func(id_w_question);
         free(question);
+        question = NULL;
         free(id_w_question);
+        id_w_question = NULL;
 
         size_t answer_len = payload_len - (sizeof(struct dns_header) + question_len);
         // move pointer to begin of answer part
         uint8_t* answer_p = question_answer + question_len;
-        // allocate memory for answer
-        answer->data = (uint8_t*)malloc(answer_len);
-        memcpy(answer->data, answer_p, answer_len);
+        // allocate memory for answer and copy it
+        uint8_t* temp_str = (uint8_t*)malloc(answer_len);
+        memcpy(temp_str, answer_p, answer_len);
+
+        answer->data = temp_str;
         answer->size = answer_len;
     }
 }
