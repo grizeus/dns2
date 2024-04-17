@@ -1,12 +1,6 @@
-#include <arpa/inet.h>
-#include <stdint.h>
-#include <stdio.h>
-#include <netinet/in.h>
-#include <linux/if_packet.h>
 #include <fcntl.h>
+#include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
 
 #include "binary_string.h"
 #include "communicate.h"
@@ -14,7 +8,7 @@
 #include "dns_parser.h"
 #include "map.h"
 
-
+#define SLEEP_INTERVAL_US 1000
 
 int main(int argc, char** argv) {
 
@@ -22,17 +16,12 @@ int main(int argc, char** argv) {
         printf("Program must run with %s local_address upstream\n", argv[0]);
         return 1;
     }
-    char* local = argv[1];
-    if (local != NULL) {
-        printf("local %s\n", local);
-    }
-    char* upstream = argv[2];
-    if (upstream != NULL) {
-        printf("upstream %s\n", upstream);
-    }
-    server_config_t config;
-    config.upstream_name = upstream;
-    config.local_address = local;
+    // initialize addresses
+    server_config_t config = {
+        .local_address = argv[1],
+        .upstream_name = argv[2]
+    };
+
     map_t* clients = map_create();
     map_t* lookup = map_create();
     char** black_list = NULL;
@@ -51,60 +40,72 @@ int main(int argc, char** argv) {
         exit(1);
     }
 
-    while (1)
-    {
-        ssize_t recv_cl_len;
-        char* message;
-        int is_received = 0;
+    while (1) {
+
+        ssize_t recv_len;
         uint32_t dns_id;
-        uint32_t client_id;
-        uint8_t* query;
+        uint32_t client_id_in;
+        uint32_t client_id_out;
+        char* recv_message;
+        binary_string_t* answer = {0};
 
-        if ((message = receive_from(sockfd, &client_addr, &recv_cl_len)) != NULL) {
-
-            char* dns_name = parse_query(message, recv_cl_len, &dns_id, &client_id);
-            if (in_list(dns_name, black_list)) {
-                send_to(sockfd, "Error", 6, &client_addr);
-                free(dns_name);
+        recv_message = receive_from(sockfd, &client_addr, &recv_len);
+        if (!recv_message) {
+                usleep(SLEEP_INTERVAL_US);
                 continue;
-            }
+        }
+        char* dns_name = parse_query(recv_message, recv_len, &dns_id, &client_id_in);
+        if (!dns_name) {
+                usleep(SLEEP_INTERVAL_US);
+                continue;
+        }
+
+        if (in_list(dns_name, black_list)) {
+            // TODO: maybe need to send some real shit
+            send_to(sockfd, "Error", 6, &client_addr);
             free(dns_name);
-            // 1. search in cache for match query with responce
-            // 2. if success, return response to client
-            // 3. if not, send to upstream, return response from upstream and save into cache table
-            binary_string_t* answer = map_find(lookup, dns_id);
-            if (!answer) {
-                if (send_to(dns_sockfd, message, recv_cl_len, &dns_addr)) {
-                    map_add(clients, client_id, &client_addr, NULL);
-                    free(message);
-                }
-            } else {
-                size_t response_len;
-                char* response = build_response(message, recv_cl_len, answer, &response_len);
-                send_to(sockfd, response, response_len, &client_addr);
-                free(response);
-                free(message);
-            }
-            is_received = 1;
+            continue;
         }
-        binary_string_t response;
-        if (message == receive_from(dns_sockfd, &client_addr, &recv_cl_len)) {
-            parse_responce(message, recv_cl_len, &response, &dns_id, &client_id);
-            struct sockaddr_in* result = map_find(clients, client_id);
-            if (result){
-                client_addr = *result;
-            } else {
-                perror("Address not found");
-                continue;
-            }
-            if (send_to(sockfd, message, recv_cl_len, &client_addr)) {
-                map_add(lookup, dns_id, &response, NULL);
-                map_delete(clients, client_id, NULL, NULL, NULL);
-            }
-            is_received = 1;
+
+        free(dns_name);
+
+        // get real data from map (answer), DO NOT FREE!
+        answer = map_find(lookup, dns_id);
+
+        if (!answer) {
+            puts("send to upstream");
+            send_to(dns_sockfd, recv_message, recv_len, &dns_addr);
+            map_add(clients, client_id_in, &client_addr, NULL);
+            free(recv_message);
+        } else {
+            size_t response_len;
+            char* new_response = build_response(recv_message, recv_len, answer, &response_len);
+            send_to(sockfd, new_response, response_len, &client_addr);
+            free(new_response);
+            free(recv_message);
+            continue;
         }
-        if (!is_received) {
-            usleep(10000);
+
+        answer = (binary_string_t*)malloc(sizeof(binary_string_t));
+        recv_message = receive_from(dns_sockfd, &dns_addr, &recv_len);
+        if (recv_len < 0) {
+            usleep(SLEEP_INTERVAL_US);
+            continue;
+        }
+
+        parse_response(recv_message, recv_len, answer, &dns_id, &client_id_out);
+        // search in the map for the client's address to send
+        struct sockaddr_in* result = map_find(clients, client_id_out);
+        if (result){
+            client_addr = *result;
+        } else {
+            perror("Address not found");
+            continue;
+        }
+        if (send_to(sockfd, recv_message, recv_len, &client_addr)) {
+            // add actual response to map(DO NOT FREE THIS HERE)
+            map_add(lookup, dns_id, answer, NULL);
+            map_delete(clients, client_id_out, NULL, NULL, NULL);
         }
     }
     return 0;
