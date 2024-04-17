@@ -59,6 +59,20 @@ int main() {
         TEST(memcmp(b_str.data, str, size) == 0);
         binary_string_destroy(&b_str);
     }
+    printf("\033[0;90mdeleteproof substrate string\033[0;37m\n");
+    {
+        uint8_t str[] = {0x26, 0xa9, 0x01, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00};
+        size_t size = 9;
+        uint8_t* str_p = (uint8_t*)malloc(size * sizeof(uint8_t));
+        memcpy(str_p, str, size);
+        binary_string_t b_str = binary_string_create(str_p, size);
+        free(str_p);
+        str_p = NULL;
+        TEST(b_str.data != NULL);
+        TEST(b_str.size == 9);
+        TEST(memcmp(b_str.data, str, size) == 0);
+        binary_string_destroy(&b_str);
+    }
     printf("\033[0;90mfree string\033[0;37m\n");
     {
         uint8_t str[] = {0x26, 0xa9, 0x01, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00};
@@ -190,16 +204,46 @@ int main() {
         
         uint32_t resp_hash = 0;
         uint32_t rcli_hash = 0;
-        binary_string_t answer;
-        parse_responce(response, sizeof(response), &answer, &resp_hash, &rcli_hash);
+        binary_string_t* answer = (binary_string_t*)malloc(sizeof(binary_string_t));
+        parse_response(response, sizeof(response), answer, &resp_hash, &rcli_hash);
         TEST(quest_hash == resp_hash);
         TEST(qcli_hash == rcli_hash);
-        TEST(answer.size == (sizeof(response) - sizeof(query)));
+        TEST(answer->size == (sizeof(response) - sizeof(query)));
 
         size_t new_response_size;
-        char* new_response = build_response(query, sizeof(query), &answer, &new_response_size);
+        char* new_response = build_response(query, sizeof(query), answer, &new_response_size);
         TEST(memcmp(new_response, response, new_response_size) == 0);
-        binary_string_destroy(&answer);
+        binary_string_destroy(answer);
+        free(new_response);
+    }
+    printf("\033[0;90mbuild dns response\033[0;37m\n");
+    {
+        map_t* map = map_create();
+        char response[] = {
+            0x52, 0xc3, 0x81, 0x80, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x03, 0x77, 0x77, 0x77,
+            0x06, 0x67, 0x6f, 0x6f, 0x67, 0x6c, 0x65, 0x03, 0x63, 0x6f, 0x6d, 0x00, 0x00, 0x1c, 0x00, 0x01,
+            0xc0, 0x0c, 0x00, 0x1c, 0x00, 0x01, 0x00, 0x00, 0x01, 0x0f, 0x00, 0x10, 0x2a, 0x00, 0x14, 0x50,
+            0x40, 0x1b, 0x08, 0x0e, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x20, 0x04
+        };
+        
+        uint32_t resp_hash = 0;
+        uint32_t rcli_hash = 0;
+        binary_string_t* answer = (binary_string_t*)malloc(sizeof(binary_string_t));
+        parse_response(response, sizeof(response), answer, &resp_hash, &rcli_hash);
+        map_add(map, resp_hash, answer, NULL);
+
+        char query[] = {
+            0x52, 0xc3, 0x01, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x03, 0x77, 0x77, 0x77,
+            0x06, 0x67, 0x6f, 0x6f, 0x67, 0x6c, 0x65, 0x03, 0x63, 0x6f, 0x6d, 0x00, 0x00, 0x1c, 0x00, 0x01
+        };
+        uint32_t quest_hash = 0;
+        uint32_t qcli_hash = 0;
+        char* dns_name = parse_query(query, sizeof(query), &quest_hash, &qcli_hash);
+        binary_string_t* answer_from = map_find(map, quest_hash);
+        size_t new_response_size;
+        char* new_response = build_response(query, sizeof(query), answer_from, &new_response_size);
+        TEST(memcmp(new_response, response, new_response_size) == 0);
+        binary_string_destroy(answer);
         free(new_response);
     }
     printf("\033[0;90mparse file function\033[0;37m\n");
