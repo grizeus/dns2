@@ -4,7 +4,7 @@
 #include "map.h"
 
 
-static node_t* node_create(int key, void* data);
+static node_t* node_create(uint32_t key, void* data);
 static void map_rebalance(map_t* map, node_t* node);
 static void right_rotate(map_t* map, node_t* node);
 static void left_rotate(map_t* map, node_t* node);
@@ -13,9 +13,9 @@ static node_t* find_minimum(map_t* map, node_t* node);
 static void transplant(map_t* map, node_t* x, node_t* y);
 static void delete_fixup(map_t* map, node_t* node);
 static void clear_helper(map_t* map, node_t* node, void(*eraser)(void*));
-node_t* map_find_node(map_t* map, int key);
+static node_t* map_find_node(map_t* map, uint32_t key);
 
-static node_t* node_create(int key, void* data) {
+static node_t* node_create(uint32_t key, void* data) {
 
     node_t* new_node = (node_t*)malloc(sizeof(node_t));
 
@@ -44,7 +44,8 @@ map_t* map_create() {
 
     return new_map;
 }
-void map_add(map_t* map, int key, void* data, void(*inner_job)(void*, void*)) {
+
+void map_add(map_t* map, uint32_t key, void* data, void(*inner_job)(void*, void*)) {
 
     node_t* new_node = node_create(key, data);
 
@@ -176,7 +177,7 @@ void left_rotate(map_t* map, node_t* node) {
     node->parent = pivot;
 }
 
-void* map_find(map_t* map, int key) {
+void* map_find(map_t* map, uint32_t key) {
 
     if(map->root == map->sentinel) {
         return NULL;
@@ -193,9 +194,9 @@ void* map_find(map_t* map, int key) {
     }
 
     return current->data;
+    // TODO: memcpy
 }
-
-node_t* map_find_node(map_t* map, int key) {
+static node_t* map_find_node(map_t* map, uint32_t key) {
 
 
     if(map->root == map->sentinel) {
@@ -228,7 +229,7 @@ void map_iterate(map_t* map, void(*iter)(void*)) {
     iterate_helper(map, map->root, iter);
 }
 
-void map_delete(map_t* map, int key, void(*deleter)(void*, void*), void* additional_key, void(*eraser)(void*)) {
+void map_delete(map_t* map, uint32_t key, void(*deleter)(void*, void*), void* additional_key, void(*eraser)(void*)) {
 
     if (map->root == map->sentinel) {
         return;

@@ -25,9 +25,9 @@ struct node {
 };
 
 map_t* map_create();
-void map_add(map_t* map, int key, void* data, void(*inner_job)(void*, void*));
-void map_delete(map_t* map, int key, void(*deleter)(void*, void*), void* additional_key, void(*eraser)(void*));
-void* map_find(map_t* map, int key);
+void map_add(map_t* map, uint32_t key, void* data, void(*inner_job)(void*, void*));
+void map_delete(map_t* map, uint32_t key, void(*deleter)(void*, void*), void* additional_key, void(*eraser)(void*));
+void* map_find(map_t* map, uint32_t key);
 void map_iterate(map_t* map, void(*iter)(void*));
 void map_clear(map_t* map, void(*eraser)(void*));
 
