@@ -5,7 +5,7 @@
 
 #include "utility.h"
 
-#define PORT     8888
+#define PORT     8080
 #define DNS_PORT 53
 
 static void query_setup(char query[]);
