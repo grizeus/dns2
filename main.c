@@ -9,23 +9,53 @@
 #include "map.h"
 
 #define SLEEP_INTERVAL_US 1000
+#define RESPONSE_HTML "\
+HTTP/1.1 200 OK\r\n\
+Content-Type: text/html\r\n\
+\r\n\
+<!DOCTYPE html>\n\
+<html>\n\
+<head>\n\
+<title>Blocked Domain</title>\n\
+<style>\n\
+    body {\n\
+        font-family: Arial, sans-serif;\n\
+        margin: 20px;\n\
+    }\n\
+    .container {\n\
+        max-width: 600px;\n\
+        margin: auto;\n\
+        text-align: center;\n\
+    }\n\
+    h1 {\n\
+        color: #FF0000;\n\
+    }\n\
+</style>\n\
+</head>\n\
+<body>\n\
+    <div class=\"container\">\n\
+        <h1>Domain Blocked</h1>\n\
+        <p>The domain you are trying to access is blocked due to being on a blacklist.</p>\n\
+        <p>Please contact your network administrator for further assistance.</p>\n\
+    </div>\n\
+</body>\n\
+</html>"
 
 int main(int argc, char** argv) {
 
-    if (argc != 3) {
-        printf("Program must run with %s local_address upstream\n", argv[0]);
+    if (argc != 2) {
+        printf("Program must run with %s local_address\n", argv[0]);
         return 1;
     }
     // initialize addresses
     server_config_t config = {
         .local_address = argv[1],
-        .upstream_name = argv[2]
+        .upstream_name = initialize_upstream("config.ini")
     };
 
     map_t* clients = map_create();
     map_t* lookup = map_create();
-    char** black_list = NULL;
-    initialize_black_list("config.ini", &black_list);
+    char** black_list = initialize_black_list("config.ini");
 
     int sockfd, dns_sockfd;
     struct sockaddr_in server_addr, dns_addr, client_addr;
