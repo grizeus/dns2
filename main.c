@@ -93,8 +93,8 @@ int main(int argc, char** argv) {
         }
 
         if (in_list(dns_name, black_list)) {
-            // TODO: maybe need to send some real shit
-            send_to(sockfd, "Error", 6, &client_addr);
+            printf("A request has been made for a blocked %s resource\n", dns_name);
+            send_to(sockfd, RESPONSE_HTML, strlen(RESPONSE_HTML), &client_addr);
             free(dns_name);
             continue;
         }
