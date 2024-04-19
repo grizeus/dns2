@@ -26,7 +26,7 @@ int test(int pass, const char* msg, const char* file, int line) {
 void create_ini(const char* filename) {
 
     FILE* new_file;
-    char* data[] = {"Domains= vk.com, x.com\n"};
+    char* data[] = {"Domains = www.vk.com, www.x.com\nUpstream = 1.1.1.1\n"};
 
     new_file = fopen(filename, "w");
     if (new_file == NULL) {
@@ -250,10 +250,12 @@ int main() {
     {
         const char* filename = "config.ini";
         create_ini(filename);
-        char** black_list = NULL;
-        initialize_black_list(filename, &black_list);
-        TEST(in_list("vk.com", black_list) == 1);
-        TEST(in_list("x.com", black_list) == 1);
+        char** black_list = initialize_black_list(filename);
+        char* upstream1 = initialize_upstream(filename);
+        char* upstream2 = initialize_upstream(filename);
+        TEST(strcmp(upstream1, upstream2) == 0);
+        TEST(in_list("www.vk.com", black_list) == 1);
+        TEST(in_list("www.x.com", black_list) == 1);
         TEST(in_list("raga.com", black_list) == 0);
         for (size_t i = 0; black_list[i] != NULL; ++i) {
             free(black_list[i]);
