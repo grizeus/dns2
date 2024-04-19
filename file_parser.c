@@ -5,7 +5,7 @@
 
 #include "file_parser.h"
 
-#define BUFFER_SIZE 256
+#define BUFFER_SIZE 2048
 
 /**
  * Parses a line of text based on a given key and returns a vector of strings.
@@ -15,7 +15,7 @@
  * @param line string (an array of chars) of text to parse.
  * @return Array of char* pointers containing the parsed values.
  */
-static char** get_list(const char* key, char* line);
+static char** get_list(char* line);
 
 static char* trim_whitespaces(char* str) {
 
@@ -42,25 +42,33 @@ static char* trim_whitespaces(char* str) {
     return final_str;
 }
 
-static void count_size(const char* key, const char* line, int* count) {
+static int count_size(const char* line) {
+    int count = 0;
+    int found_symbol = 0;
 
-    *count = 0;
-    char* buf = strdup(line);
-    char* token = strtok(buf, "=");
-    if (token == NULL || strcmp(token, key) != 0) {
-        fprintf(stderr, "Key is not found\n");
-        return;
+    // Iterate through the characters in the line
+    while (*line != '\0') {
+        if (*line == '=') {
+            found_symbol = 1;
+            if (isalnum(*(line + 1)) || *(line + 1) == ' ') {
+                // add first word after '='
+                count++;
+            }
+        }
+        if (found_symbol && *line == ',') {
+            // Check if the next character is not a comma or end of string
+            if (*(line + 1) != ',' && *(line + 1) != '\0') {
+                count++; // Found a non-empty word after the symbol, increment count
+            }
+        }
+        line++;
     }
-
-    while ((token = strtok(NULL, ",")) != NULL) {
-        (*count)++;
-    }
+    return count;
 }
 
-static char** get_list(const char* key, char* line) {
+static char** get_list(char* line) {
 
-    int count;
-    count_size(key, line, &count);
+    int count = count_size(line);
     char** values = (char**)malloc((count + 1) * sizeof(char*));
     if (values == NULL) {
         fprintf(stderr, "Memory allocation error\n");
@@ -69,46 +77,57 @@ static char** get_list(const char* key, char* line) {
 
     // reset count to parse
     count = 0;
-
-    char* current_token = strtok(line, "=");
-
-    // Check if the first token matches the expected key
-    if (current_token == NULL || strcmp(current_token, key) != 0) {
-        // If the key does not match, free the memory and return an empty vector
-        fprintf(stderr, "Key \"%s\" is not found\n", key);
-        return NULL;
-    }
-
-
+    // cut off 'head' before '='
+    char* token = strtok(strdup(line), "=");
+    token = strtok(NULL, ",");
     // Continue tokenizing the remaining part of the line using comma as a delimiter
-    while ((current_token = strtok(NULL, ",")) != NULL) {
+    while (token) {
+        values[count] = trim_whitespaces(token);
+        token = strtok(NULL, ",");
         count++;
-        values[count-1] = trim_whitespaces(current_token);
     }
 
-    values[count] = NULL;
+    values[count++] = NULL;
 
     return values;
 
 }
 
-void initialize_black_list(const char* filename, char** black_list) {
+char* initialize_upstream(const char* filename) {
 
     FILE* file = fopen(filename, "r");
     if (file == NULL) {
         fprintf(stderr, "File %s could not open\n", filename);
-        return;
+        return NULL;
     }
 
     char buffer[BUFFER_SIZE];
+    const char* dom_key = "Upstream";
     while (fgets(buffer, sizeof(buffer), file)) {
-        if (*black_list == NULL) {
-            *black_list = get_list("Domains", buffer);
-        }
+       if (strncmp(buffer, dom_key , strlen(dom_key)) == 0) {
+            char* start = strchr(buffer, '=');
+            start++;
+            return trim_whitespaces(start);
+       }
+    }
 
-        if (black_list != NULL) {
-            break;
-        }
+    fclose(file);
+}
+
+char** initialize_black_list(const char* filename) {
+
+    FILE* file = fopen(filename, "r");
+    if (file == NULL) {
+        fprintf(stderr, "File %s could not open\n", filename);
+        return NULL;
+    }
+
+    char buffer[BUFFER_SIZE];
+    const char* dom_key = "Domains";
+    while (fgets(buffer, sizeof(buffer), file)) {
+       if (strncmp(buffer, dom_key , strlen(dom_key)) == 0) {
+            return get_list(buffer);
+       }
     }
 
     fclose(file);

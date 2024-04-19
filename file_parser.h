@@ -8,7 +8,8 @@
  * @param filename File from which to read
  * @param black_list Vector containting forbidden addresses
  * */
-void initialize_black_list(const char* filename, char** black_list);
+char** initialize_black_list(const char* filename);
+char* initialize_upstream(const char* filename);
 /**
  * @brief Checks if a target string is in a list of strings.
  *
