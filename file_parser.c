@@ -93,46 +93,33 @@ static char** get_list(char* line) {
 
 }
 
-char* initialize_upstream(const char* filename) {
+init_data_t initialize(const char* filename) {
 
+    init_data_t data = {NULL, NULL};
     FILE* file = fopen(filename, "r");
     if (file == NULL) {
         fprintf(stderr, "File %s could not open\n", filename);
-        return NULL;
+        return data;
     }
 
     char buffer[BUFFER_SIZE];
-    const char* dom_key = "Upstream";
+    const char* upstream_key = "Upstream";
+    const char* blacklist_key = "Domains";
     while (fgets(buffer, sizeof(buffer), file)) {
-       if (strncmp(buffer, dom_key , strlen(dom_key)) == 0) {
+       if (strncmp(buffer, blacklist_key, strlen(blacklist_key)) == 0) {
+            data.black_list = get_list(buffer);
+       }
+       if (strncmp(buffer, upstream_key, strlen(upstream_key)) == 0) {
             char* start = strchr(buffer, '=');
             start++;
-            return trim_whitespaces(start);
+            data.upstream = trim_whitespaces(start);
        }
+
     }
 
     fclose(file);
+    return data;
 }
-
-char** initialize_black_list(const char* filename) {
-
-    FILE* file = fopen(filename, "r");
-    if (file == NULL) {
-        fprintf(stderr, "File %s could not open\n", filename);
-        return NULL;
-    }
-
-    char buffer[BUFFER_SIZE];
-    const char* dom_key = "Domains";
-    while (fgets(buffer, sizeof(buffer), file)) {
-       if (strncmp(buffer, dom_key , strlen(dom_key)) == 0) {
-            return get_list(buffer);
-       }
-    }
-
-    fclose(file);
-}
-
 int in_list(const char* target, char** list) {
 
     for (size_t i = 0; list[i] != NULL; ++i) {

@@ -1,15 +1,21 @@
 #ifndef FILE_PARSER_H
 #define FILE_PARSER_H
 
+typedef struct init_data init_data_t;
+
+struct init_data {
+    char* upstream;
+    char** black_list;
+};
 /**
  * Combine get_list and get_string function to initialize variables from .ini
  * file.
  *
  * @param filename File from which to read
- * @param black_list Vector containting forbidden addresses
+ * @return init_data_t struct with black_list and upstream variables or empty
+ * struct, if file is empty or unavailable
  * */
-char** initialize_black_list(const char* filename);
-char* initialize_upstream(const char* filename);
+init_data_t initialize(const char* filename);
 /**
  * @brief Checks if a target string is in a list of strings.
  *
