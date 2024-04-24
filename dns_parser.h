@@ -5,6 +5,7 @@
 #include "binary_string.h"
 
 typedef struct dns_header dns_header_t;
+typedef struct query_data query_data_t;
 
 struct dns_header {
     uint16_t id;
@@ -15,7 +16,13 @@ struct dns_header {
     uint16_t arcount;
 };
 
-char* parse_query(char* buffer, int payload_len, uint32_t* query_hash, uint32_t* client_hash);
-void parse_response(char* buffer, int payload_len, binary_string_t* answer, uint32_t* query_hash, uint32_t* client_hash);
+struct query_data {
+    char* dns_name;
+    uint32_t question_hash;
+    uint32_t client_hash;
+};
+
+query_data_t parse_query(char* buffer, int payload_len);
+void parse_response(char* buffer, int payload_len, binary_string_t* answer, uint32_t* question_hash, uint32_t* client_hash);
 
 #endif // DNS_PARSER_H

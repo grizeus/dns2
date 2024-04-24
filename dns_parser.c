@@ -1,3 +1,4 @@
+#include <errno.h>
 #include <netinet/in.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -23,33 +24,32 @@ static uint32_t fnv1a_hash_func(const uint8_t* str) {
 
     return hash;
 }
-// i need to retrieve hash value of dns name
-char* parse_query(char* buffer, int payload_len, uint32_t* question_hash, uint32_t* client_hash) {
 
-    uint8_t* dns_payload = (uint8_t*)buffer;
+query_data_t parse_query(char* buffer, int payload_len) {
 
-    dns_header_t* dns_header = (dns_header_t*)dns_payload;
+    query_data_t query_data = {NULL, 0, 0};
+    dns_header_t* dns_header = (dns_header_t*)buffer;
     int question_len = payload_len - sizeof(dns_header_t);
     if ((ntohs(dns_header->flags) & 0x8000) == 0) {
 
-        const uint8_t* question = dns_payload + sizeof(dns_header_t);
-        char* extracted = malloc(question_len);
+        const uint8_t* question = (uint8_t*)buffer + sizeof(dns_header_t);
 
+        char* extracted = (char*)malloc(question_len);
         if (extracted == NULL) {
-            perror("Memory allocation failed");
-            return NULL;
+            fprintf(stderr, "Memory allocation failed with code %d: %s.\n", errno, strerror(errno));
+            return query_data;
         }
 
         int domain_ind = 0;
         int i = 0;
-        
+
         while (i < payload_len) {
             int label_len = question[i];
 
             if (domain_ind + label_len + 1 > MAX_DOMAIN_LEN) {
                 fprintf(stderr, "Domain length exceeds maximum allowed\n");
                 free(extracted);
-                return NULL;
+                return query_data;
             }
 
             for (int j = 1; j <= label_len; ++j) {
@@ -70,33 +70,36 @@ char* parse_query(char* buffer, int payload_len, uint32_t* question_hash, uint32
         } else {
             fprintf(stderr, "No domain extracted\n");
             free(extracted);
-            return NULL;
+            return query_data;
         }
         // hash dns question
-        *question_hash = fnv1a_hash_func(question);
+        query_data.question_hash = fnv1a_hash_func(question);
         // create string with id + question
         uint8_t* id_w_question = (uint8_t*)malloc(question_len + ID_SIZE);
+        if (id_w_question == NULL) {
+            fprintf(stderr, "Memory allocation failed with code %d: %s.\n", errno, strerror(errno));
+            return query_data;
+        }
         // copy id first, and then all question
-        memcpy(id_w_question, dns_payload, ID_SIZE);
+        memcpy(id_w_question, buffer, ID_SIZE);
         memcpy(id_w_question + ID_SIZE, question, question_len);
 
         // hash this to identificate our client (specific ID + question)
-        *client_hash = fnv1a_hash_func(id_w_question);
+        query_data.client_hash = fnv1a_hash_func(id_w_question);
         free(id_w_question);
-        return extracted;
+        query_data.dns_name = extracted;
     }
 
-    return NULL;
+    return query_data;
 }
 
 void parse_response(char* buffer, int payload_len, binary_string_t* answer, uint32_t* question_hash, uint32_t* client_hash) {
 
-    uint8_t* dns_payload = (uint8_t*)buffer;
-    dns_header_t* dns_header = (dns_header_t*)dns_payload;
+    dns_header_t* dns_header = (dns_header_t*)buffer;
 
     if ((ntohs(dns_header->flags) & 0x8000) != 0) {
         // question_answer is starting point of question and answer in response
-        uint8_t* question_answer = dns_payload + sizeof(struct dns_header);
+        uint8_t* question_answer = (uint8_t*)buffer + sizeof(struct dns_header);
         int i = 0;
         size_t question_len = 0; // initialize
         // find length of question
@@ -111,13 +114,21 @@ void parse_response(char* buffer, int payload_len, binary_string_t* answer, uint
             question_len += label_len + 1;
         }
         uint8_t* question = (uint8_t*)malloc(question_len);
+        if (question == NULL) {
+            fprintf(stderr, "Memory allocation failed with code %d: %s.\n", errno, strerror(errno));
+            return;
+        }
         memcpy(question, question_answer, question_len);
         *question_hash = fnv1a_hash_func(question);
-        
+
         // create string with id + question
         uint8_t* id_w_question = (uint8_t*)malloc(question_len + ID_SIZE);
+        if (id_w_question == NULL) {
+            fprintf(stderr, "Memory allocation failed with code %d: %s.\n", errno, strerror(errno));
+            return;
+        }
         // copy id first, and then all question
-        memcpy(id_w_question, dns_payload, ID_SIZE);
+        memcpy(id_w_question, buffer, ID_SIZE);
         memcpy(id_w_question + ID_SIZE, question, question_len);
 
         // hash this to identificate our client (specific ID + question)
@@ -132,6 +143,10 @@ void parse_response(char* buffer, int payload_len, binary_string_t* answer, uint
         uint8_t* answer_p = question_answer + question_len;
         // allocate memory for answer and copy it
         uint8_t* temp_str = (uint8_t*)malloc(answer_len);
+        if (temp_str == NULL) {
+            fprintf(stderr, "Memory allocation failed with code %d: %s.\n", errno, strerror(errno));
+            return;
+        }
         memcpy(temp_str, answer_p, answer_len);
 
         answer->data = temp_str;
