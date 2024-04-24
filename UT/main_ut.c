@@ -192,9 +192,7 @@ int main() {
             0x52, 0xc3, 0x01, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x03, 0x77, 0x77, 0x77,
             0x06, 0x67, 0x6f, 0x6f, 0x67, 0x6c, 0x65, 0x03, 0x63, 0x6f, 0x6d, 0x00, 0x00, 0x1c, 0x00, 0x01
         };
-        uint32_t quest_hash = 0;
-        uint32_t qcli_hash = 0;
-        char* dns_name = parse_query(query, sizeof(query), &quest_hash, &qcli_hash);
+        query_data_t query_data = parse_query(query, sizeof(query));
         char response[] = {
             0x52, 0xc3, 0x81, 0x80, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x03, 0x77, 0x77, 0x77,
             0x06, 0x67, 0x6f, 0x6f, 0x67, 0x6c, 0x65, 0x03, 0x63, 0x6f, 0x6d, 0x00, 0x00, 0x1c, 0x00, 0x01,
@@ -206,8 +204,8 @@ int main() {
         uint32_t rcli_hash = 0;
         binary_string_t* answer = (binary_string_t*)malloc(sizeof(binary_string_t));
         parse_response(response, sizeof(response), answer, &resp_hash, &rcli_hash);
-        TEST(quest_hash == resp_hash);
-        TEST(qcli_hash == rcli_hash);
+        TEST(query_data.question_hash == resp_hash);
+        TEST(query_data.client_hash == rcli_hash);
         TEST(answer->size == (sizeof(response) - sizeof(query)));
 
         size_t new_response_size;
@@ -236,10 +234,8 @@ int main() {
             0x52, 0xc3, 0x01, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x03, 0x77, 0x77, 0x77,
             0x06, 0x67, 0x6f, 0x6f, 0x67, 0x6c, 0x65, 0x03, 0x63, 0x6f, 0x6d, 0x00, 0x00, 0x1c, 0x00, 0x01
         };
-        uint32_t quest_hash = 0;
-        uint32_t qcli_hash = 0;
-        char* dns_name = parse_query(query, sizeof(query), &quest_hash, &qcli_hash);
-        binary_string_t* answer_from = map_find(map, quest_hash);
+        query_data_t query_data = parse_query(query, sizeof(query));
+        binary_string_t* answer_from = map_find(map, query_data.question_hash);
         size_t new_response_size;
         char* new_response = build_response(query, sizeof(query), answer_from, &new_response_size);
         TEST(memcmp(new_response, response, new_response_size) == 0);
@@ -250,17 +246,16 @@ int main() {
     {
         const char* filename = "config.ini";
         create_ini(filename);
-        char** black_list = initialize_black_list(filename);
-        char* upstream1 = initialize_upstream(filename);
-        char* upstream2 = initialize_upstream(filename);
-        TEST(strcmp(upstream1, upstream2) == 0);
-        TEST(in_list("www.vk.com", black_list) == 1);
-        TEST(in_list("www.x.com", black_list) == 1);
-        TEST(in_list("raga.com", black_list) == 0);
-        for (size_t i = 0; black_list[i] != NULL; ++i) {
-            free(black_list[i]);
+
+        init_data_t data = initialize(filename);
+        TEST(in_list("www.vk.com", data.black_list) == 1);
+        TEST(in_list("www.x.com", data.black_list) == 1);
+        TEST(in_list("raga.com", data.black_list) == 0);
+        for (size_t i = 0; data.black_list[i] != NULL; ++i) {
+            free(data.black_list[i]);
         }
-        free(black_list);
+        free(data.black_list);
+        free(data.upstream);
     }
     if (!failed) {
         return 0;

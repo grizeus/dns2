@@ -6,42 +6,12 @@
 
 #include "binary_string.h"
 #include "communicate.h"
+#include "file_parser.h"
 #include "utility.h"
 #include "dns_parser.h"
 #include "map.h"
 
 #define SLEEP_INTERVAL_US 1000
-#define RESPONSE_HTML "\
-HTTP/1.1 200 OK\r\n\
-Content-Type: text/html\r\n\
-\r\n\
-<!DOCTYPE html>\n\
-<html>\n\
-<head>\n\
-<title>Blocked Domain</title>\n\
-<style>\n\
-    body {\n\
-        font-family: Arial, sans-serif;\n\
-        margin: 20px;\n\
-    }\n\
-    .container {\n\
-        max-width: 600px;\n\
-        margin: auto;\n\
-        text-align: center;\n\
-    }\n\
-    h1 {\n\
-        color: #FF0000;\n\
-    }\n\
-</style>\n\
-</head>\n\
-<body>\n\
-    <div class=\"container\">\n\
-        <h1>Domain Blocked</h1>\n\
-        <p>The domain you are trying to access is blocked due to being on a blacklist.</p>\n\
-        <p>Please contact your network administrator for further assistance.</p>\n\
-    </div>\n\
-</body>\n\
-</html>"
 
 int main(int argc, char** argv) {
 
@@ -50,14 +20,20 @@ int main(int argc, char** argv) {
         return 1;
     }
     // initialize addresses
+    init_data_t init_data = initialize("config.ini");
+    if (init_data.upstream == NULL || init_data.black_list == NULL) {
+        perror("Configuration is failed. Error with 'config.ini' occured");
+        puts("Please check for 'config.ini' in directory along with the executable binary");
+        exit(1);
+    }
+
     server_config_t config = {
         .local_address = argv[1],
-        .upstream_name = initialize_upstream("config.ini")
+        .upstream_name = init_data.upstream
     };
 
     map_t* clients = map_create();
     map_t* lookup = map_create();
-    char** black_list = initialize_black_list("config.ini");
 
     int sockfd, dns_sockfd;
     struct sockaddr_in server_addr, dns_addr, client_addr;
@@ -75,46 +51,43 @@ int main(int argc, char** argv) {
     while (1) {
 
         ssize_t recv_len;
-        uint32_t dns_id;
-        uint32_t client_id_in;
-        uint32_t client_id_out;
-        char* recv_message;
+        uint32_t question_hash;
+        uint32_t client_hash;
         binary_string_t* answer = {0};
 
-        recv_message = receive_from(sockfd, &client_addr, &recv_len);
+        char* recv_message = receive_from(sockfd, &client_addr, &recv_len);
         if (!recv_message) {
-                usleep(SLEEP_INTERVAL_US);
-                continue;
+            usleep(SLEEP_INTERVAL_US);
+            continue;
         }
-        char* dns_name = parse_query(recv_message, recv_len, &dns_id, &client_id_in);
-        if (!dns_name) {
-                usleep(SLEEP_INTERVAL_US);
-                continue;
+        query_data_t query_data  = parse_query(recv_message, recv_len);
+        if (!query_data.dns_name) {
+            usleep(SLEEP_INTERVAL_US);
+            continue;
         }
-
-        if (in_list(dns_name, black_list)) {
-            printf("A request has been made for a blocked %s resource\n", dns_name);
-            send_to(sockfd, RESPONSE_HTML, strlen(RESPONSE_HTML), &client_addr);
-            free(dns_name);
+        printf("DNS %s is received\n", query_data.dns_name);
+        if (in_list(query_data.dns_name, init_data.black_list)) {
+            printf("A request has been made for a blocked %s resource\n", query_data.dns_name);
+            char* blocked_response = generate_blocked_response(query_data.dns_name);
+            send_to(sockfd, blocked_response, strlen(blocked_response), &client_addr);
+            free(query_data.dns_name);
             continue;
         }
 
-        free(dns_name);
+        free(query_data.dns_name);
 
         // get real data from map (answer), DO NOT FREE!
-        answer = map_find(lookup, dns_id);
+        answer = map_find(lookup, query_data.question_hash);
 
         if (!answer) {
             puts("send to upstream");
             send_to(dns_sockfd, recv_message, recv_len, &dns_addr);
-            map_add(clients, client_id_in, &client_addr, NULL);
-            free(recv_message);
+            map_add(clients, query_data.client_hash, &client_addr, NULL);
         } else {
             size_t response_len;
             char* new_response = build_response(recv_message, recv_len, answer, &response_len);
             send_to(sockfd, new_response, response_len, &client_addr);
             free(new_response);
-            free(recv_message);
             continue;
         }
 
@@ -125,9 +98,9 @@ int main(int argc, char** argv) {
             continue;
         }
 
-        parse_response(recv_message, recv_len, answer, &dns_id, &client_id_out);
+        parse_response(recv_message, recv_len, answer, &question_hash, &client_hash);
         // search in the map for the client's address to send
-        struct sockaddr_in* result = map_find(clients, client_id_out);
+        struct sockaddr_in* result = map_find(clients, client_hash);
         if (result){
             client_addr = *result;
         } else {
@@ -136,8 +109,8 @@ int main(int argc, char** argv) {
         }
         if (send_to(sockfd, recv_message, recv_len, &client_addr)) {
             // add actual response to map(DO NOT FREE THIS HERE)
-            map_add(lookup, dns_id, answer, NULL);
-            map_delete(clients, client_id_out, NULL, NULL, NULL);
+            map_add(lookup, question_hash, answer, NULL);
+            map_delete(clients, client_hash, NULL, NULL, NULL);
         }
     }
     return 0;
