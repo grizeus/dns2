@@ -5,7 +5,7 @@
 
 #include "utility.h"
 
-#define PORT     8080
+#define PORT     53
 #define DNS_PORT 53
 
 static void query_setup(char query[]);
@@ -73,3 +73,48 @@ static void query_setup(char query[]) {
     // change answer count to 1
     query[7] = 0x01;
 }
+
+char* generate_blocked_response(const char* blocked_domain) {
+
+    char* blocked_response = (char*)malloc(1024 * sizeof(char));
+    if (!blocked_response) {
+        perror("Memory allocation failed");
+        exit(1);
+    }
+
+    snprintf(blocked_response, 1024, 
+    "\
+HTTP/1.1 200 OK\r\n\
+Content-Type: text/html\r\n\
+\r\n\
+<!DOCTYPE html>\n\
+<html>\n\
+<head>\n\
+<title>Blocked Domain</title>\n\
+<style>\n\
+    body {\n\
+        font-family: Arial, sans-serif;\n\
+        margin: 20px;\n\
+    }\n\
+    .container {\n\
+        max-width: 600px;\n\
+        margin: auto;\n\
+        text-align: center;\n\
+    }\n\
+    h1 {\n\
+        color: #FF0000;\n\
+    }\n\
+</style>\n\
+</head>\n\
+<body>\n\
+    <div class=\"container\">\n\
+        <h1>Domain Blocked</h1>\n\
+        <p>The domain <strong>%s</strong> you are trying to access is blocked due to being on a blacklist.</p>\n\
+        <p>Please contact your network administrator for further assistance.</p>\n\
+    </div>\n\
+</body>\n\
+</html>", blocked_response);
+
+    return blocked_response;
+}
+
