@@ -35,7 +35,12 @@ static char *trim_whitespaces(char *str) {
   }
 
   size_t len = end - start;
-  char *final_str = (char *)malloc(len + 1);
+  char *final_str = (char *)malloc((len + 1) * sizeof(char));
+  if (!final_str) {
+    fprintf(stderr, "Memory allocation error\n");
+    return NULL;
+  }
+
   strncpy(final_str, start, len);
   final_str[len] = '\0';
 
@@ -88,9 +93,9 @@ static char **get_list(char *line) {
     token = strtok(NULL, ",");
     count++;
   }
-  free(temp);
-  free(token);
+
   values[count++] = NULL;
+  free(temp);
 
   return values;
 }
@@ -121,6 +126,7 @@ init_data_t initialize(const char *filename) {
   fclose(file);
   return data;
 }
+
 int in_list(const char *target, char **list) {
 
   for (size_t i = 0; list[i] != NULL; ++i) {
@@ -130,4 +136,15 @@ int in_list(const char *target, char **list) {
   }
 
   return 0;
+}
+
+void destroy_init_data(init_data_t *data) {
+
+  if (data->upstream) {
+    free(data->upstream);
+  }
+
+  for (size_t i = 0; data->black_list[i] != NULL; ++i) {
+    free(data->black_list[i]);
+  }
 }

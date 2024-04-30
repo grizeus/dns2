@@ -1,8 +1,10 @@
 #include <arpa/inet.h>
 #include <netinet/in.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/types.h>
 
 #include "../binary_string.h"
 #include "../dns_parser.h"
@@ -93,7 +95,6 @@ int main() {
     binary_string_destroy(&b_str1);
     binary_string_destroy(&b_str2);
   }
-
   printf("\033[1;34mmap test\033[0;37m\n");
   printf("\033[0;90madd to map\033[0;37m\n");
   {
@@ -187,63 +188,59 @@ int main() {
   }
   printf("\033[0;90mparse dns function\033[0;37m\n");
   {
-    char query[] = {0x52, 0xc3, 0x01, 0x00, 0x00, 0x01, 0x00, 0x00,
-                    0x00, 0x00, 0x00, 0x00, 0x03, 0x77, 0x77, 0x77,
-                    0x06, 0x67, 0x6f, 0x6f, 0x67, 0x6c, 0x65, 0x03,
-                    0x63, 0x6f, 0x6d, 0x00, 0x00, 0x1c, 0x00, 0x01};
-    query_data_t query_data = parse_query(query, sizeof(query));
-    char response[] = {
+    uint8_t query_ar[] = {0x52, 0xc3, 0x01, 0x00, 0x00, 0x01, 0x00, 0x00,
+                          0x00, 0x00, 0x00, 0x00, 0x03, 0x77, 0x77, 0x77,
+                          0x06, 0x67, 0x6f, 0x6f, 0x67, 0x6c, 0x65, 0x03,
+                          0x63, 0x6f, 0x6d, 0x00, 0x00, 0x1c, 0x00, 0x01};
+    binary_string_t query = binary_string_create(query_ar, sizeof(query_ar));
+    query_data_t query_data = parse_query(&query);
+    uint8_t response_ar[] = {
         0x52, 0xc3, 0x81, 0x80, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00,
         0x03, 0x77, 0x77, 0x77, 0x06, 0x67, 0x6f, 0x6f, 0x67, 0x6c, 0x65, 0x03,
         0x63, 0x6f, 0x6d, 0x00, 0x00, 0x1c, 0x00, 0x01, 0xc0, 0x0c, 0x00, 0x1c,
         0x00, 0x01, 0x00, 0x00, 0x01, 0x0f, 0x00, 0x10, 0x2a, 0x00, 0x14, 0x50,
         0x40, 0x1b, 0x08, 0x0e, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x20, 0x04};
 
-    uint32_t resp_hash = 0;
-    uint32_t rcli_hash = 0;
-    binary_string_t *answer =
-        (binary_string_t *)malloc(sizeof(binary_string_t));
-    parse_response(response, sizeof(response), answer, &resp_hash, &rcli_hash);
-    TEST(query_data.question_hash == resp_hash);
-    TEST(query_data.client_hash == rcli_hash);
-    TEST(answer->size == (sizeof(response) - sizeof(query)));
+    binary_string_t response =
+        binary_string_create(response_ar, sizeof(response_ar));
+    response_data_t response_data = parse_response(&response);
+    TEST(query_data.question_hash == response_data.question_hash);
+    TEST(query_data.client_hash == response_data.client_hash);
+    TEST(response_data.answer->size == (response.size - query.size));
 
-    size_t new_response_size;
-    char *new_response =
-        build_response(query, sizeof(query), answer, &new_response_size);
-    TEST(memcmp(new_response, response, new_response_size) == 0);
-    binary_string_destroy(answer);
-    free(new_response);
+    binary_string_t new_response =
+        build_response(query.data, query.size, response_data.answer);
+    TEST(memcmp(new_response.data, response.data, new_response.size) == 0);
+    binary_string_destroy(&new_response);
   }
   printf("\033[0;90mbuild dns response\033[0;37m\n");
   {
     map_t *map = map_create();
-    char response[] = {
+    uint8_t response_ar[] = {
         0x52, 0xc3, 0x81, 0x80, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00,
         0x03, 0x77, 0x77, 0x77, 0x06, 0x67, 0x6f, 0x6f, 0x67, 0x6c, 0x65, 0x03,
         0x63, 0x6f, 0x6d, 0x00, 0x00, 0x1c, 0x00, 0x01, 0xc0, 0x0c, 0x00, 0x1c,
         0x00, 0x01, 0x00, 0x00, 0x01, 0x0f, 0x00, 0x10, 0x2a, 0x00, 0x14, 0x50,
         0x40, 0x1b, 0x08, 0x0e, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x20, 0x04};
 
-    uint32_t resp_hash = 0;
-    uint32_t rcli_hash = 0;
-    binary_string_t *answer =
-        (binary_string_t *)malloc(sizeof(binary_string_t));
-    parse_response(response, sizeof(response), answer, &resp_hash, &rcli_hash);
-    map_add(map, resp_hash, answer, NULL);
+    binary_string_t response =
+        binary_string_create(response_ar, sizeof(response_ar));
+    response_data_t response_data = parse_response(&response);
+    map_add(map, response_data.question_hash, response_data.answer, NULL);
 
-    char query[] = {0x52, 0xc3, 0x01, 0x00, 0x00, 0x01, 0x00, 0x00,
-                    0x00, 0x00, 0x00, 0x00, 0x03, 0x77, 0x77, 0x77,
-                    0x06, 0x67, 0x6f, 0x6f, 0x67, 0x6c, 0x65, 0x03,
-                    0x63, 0x6f, 0x6d, 0x00, 0x00, 0x1c, 0x00, 0x01};
-    query_data_t query_data = parse_query(query, sizeof(query));
+    uint8_t query_ar[] = {0x52, 0xc3, 0x01, 0x00, 0x00, 0x01, 0x00, 0x00,
+                          0x00, 0x00, 0x00, 0x00, 0x03, 0x77, 0x77, 0x77,
+                          0x06, 0x67, 0x6f, 0x6f, 0x67, 0x6c, 0x65, 0x03,
+                          0x63, 0x6f, 0x6d, 0x00, 0x00, 0x1c, 0x00, 0x01};
+    binary_string_t query = binary_string_create(query_ar, sizeof(query_ar));
+    query_data_t query_data = parse_query(&query);
     binary_string_t *answer_from = map_find(map, query_data.question_hash);
-    size_t new_response_size;
-    char *new_response =
-        build_response(query, sizeof(query), answer_from, &new_response_size);
-    TEST(memcmp(new_response, response, new_response_size) == 0);
-    binary_string_destroy(answer);
-    free(new_response);
+    binary_string_t new_response =
+        build_response(query.data, query.size, answer_from);
+    TEST(memcmp(new_response.data, response.data, new_response.size) == 0);
+    binary_string_destroy(&query);
+    binary_string_destroy(&new_response);
+    free(query_data.dns_name);
   }
   printf("\033[0;90mparse file function\033[0;37m\n");
   {

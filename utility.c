@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 #include "utility.h"
 
@@ -42,25 +43,29 @@ void setup_sockets(int *sockfd, int *dns_sockfd,
     perror("Binding failed");
     exit(1);
   }
-  printf("Sockets setup is done\n");
+  puts("Sockets setup is done");
 }
 
-char *build_response(char *initial_query, size_t query_size,
-                     binary_string_t *answer, size_t *new_size) {
-
-  if (query_size == 0 || answer->size == 0) {
-    return NULL;
+binary_string_t build_response(char* initial_query, size_t query_len,
+                     binary_string_t *answer) {
+  
+  binary_string_t new_response = { NULL, 0};
+  if (query_len == 0 || answer->size == 0) {
+    return new_response;
   }
   // allocate memory for response
-  *new_size = query_size + answer->size;
-  char *new_response = (char *)malloc(*new_size);
-  if (new_response == NULL) {
-    return NULL;
+  size_t size = query_len + answer->size;
+  char *response = (char *)malloc(size);
+  if (response == NULL) {
+    return new_response;
   }
   query_setup(initial_query);
-  memcpy(new_response, initial_query, query_size);
-  memcpy(new_response + query_size, answer->data, answer->size);
+  memcpy(response, initial_query, query_len);
+  memcpy(response + query_len, answer->data, answer->size);
 
+  new_response.data = response;
+  new_response.size = size;
+  
   return new_response;
 }
 
@@ -74,15 +79,16 @@ static void query_setup(char query[]) {
   query[7] = 0x01;
 }
 
-char *generate_blocked_response(const char *blocked_domain) {
+binary_string_t generate_blocked_response(const char *blocked_domain) {
 
-  char *blocked_response = (char *)malloc(1024 * sizeof(char));
-  if (!blocked_response) {
+  char *str = (char *)malloc(1024 * sizeof(char));
+
+  if (!str) {
     perror("Memory allocation failed");
     exit(1);
   }
 
-  snprintf(blocked_response, 1024, "\
+  snprintf(str, 1024, "\
 HTTP/1.1 200 OK\r\n\
 Content-Type: text/html\r\n\
 \r\n\
@@ -112,8 +118,7 @@ Content-Type: text/html\r\n\
         <p>Please contact your network administrator for further assistance.</p>\n\
     </div>\n\
 </body>\n\
-</html>",
-           blocked_domain);
-
+</html>", blocked_domain);
+  binary_string_t blocked_response = {(uint8_t*)str, 1024};
   return blocked_response;
 }
