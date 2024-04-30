@@ -42,7 +42,7 @@ void setup_sockets(int* sockfd, int* dns_sockfd,
         perror("Binding failed");
         exit(1);
     }
-    puts("Sockets setup is done");
+    printf("Sockets setup is done\n");
 }
 
 char* build_response(char* initial_query, size_t query_size, binary_string_t* answer, size_t* new_size) {
@@ -113,7 +113,7 @@ Content-Type: text/html\r\n\
         <p>Please contact your network administrator for further assistance.</p>\n\
     </div>\n\
 </body>\n\
-</html>", blocked_response);
+</html>", blocked_domain);
 
     return blocked_response;
 }

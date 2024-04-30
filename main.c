@@ -70,6 +70,7 @@ int main(int argc, char** argv) {
             printf("A request has been made for a blocked %s resource\n", query_data.dns_name);
             char* blocked_response = generate_blocked_response(query_data.dns_name);
             send_to(sockfd, blocked_response, strlen(blocked_response), &client_addr);
+            free(blocked_response);
             free(query_data.dns_name);
             continue;
         }
@@ -113,5 +114,6 @@ int main(int argc, char** argv) {
             map_delete(clients, client_hash, NULL, NULL, NULL);
         }
     }
+
     return 0;
 }

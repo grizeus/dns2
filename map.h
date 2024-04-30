@@ -30,5 +30,5 @@ void map_delete(map_t* map, uint32_t key, void(*deleter)(void*, void*), void* ad
 void* map_find(map_t* map, uint32_t key);
 void map_iterate(map_t* map, void(*iter)(void*));
 void map_clear(map_t* map, void(*eraser)(void*));
-
+void map_destroy(map_t* map, void(*eraser)(void*));
 #endif // !MAP_H

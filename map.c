@@ -372,6 +372,13 @@ static void clear_helper(map_t* map, node_t* node, void(*eraser)(void*)) {
     }
 }
 
+void map_destroy(map_t* map, void(*eraser)(void*)) {
+
+    clear_helper(map, map->root, eraser);
+    free(map->sentinel);
+    free(map);
+}
+
 void map_clear(map_t* map, void(*eraser)(void*)) {
 
     if (map->root == map->sentinel) {

@@ -37,7 +37,7 @@ static char* trim_whitespaces(char* str) {
     size_t len = end - start;
     char* final_str = (char*)malloc(len + 1);
     strncpy(final_str, start, len);
-    final_str[len + 1] = '\0';
+    final_str[len] = '\0';
 
     return final_str;
 }
@@ -78,7 +78,8 @@ static char** get_list(char* line) {
     // reset count to parse
     count = 0;
     // cut off 'head' before '='
-    char* token = strtok(strdup(line), "=");
+    char* temp = strdup(line);
+    char* token = strtok(temp, "=");
     token = strtok(NULL, ",");
     // Continue tokenizing the remaining part of the line using comma as a delimiter
     while (token) {
@@ -86,7 +87,8 @@ static char** get_list(char* line) {
         token = strtok(NULL, ",");
         count++;
     }
-
+    free(temp);
+    free(token);
     values[count++] = NULL;
 
     return values;
