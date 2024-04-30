@@ -4,8 +4,8 @@
 typedef struct init_data init_data_t;
 
 struct init_data {
-    char* upstream;
-    char** black_list;
+  char *upstream;
+  char **black_list;
 };
 /**
  * Combine get_list and get_string function to initialize variables from .ini
@@ -15,7 +15,7 @@ struct init_data {
  * @return init_data_t struct with black_list and upstream variables or empty
  * struct, if file is empty or unavailable
  * */
-init_data_t initialize(const char* filename);
+init_data_t initialize(const char *filename);
 /**
  * @brief Checks if a target string is in a list of strings.
  *
@@ -28,5 +28,5 @@ init_data_t initialize(const char* filename);
  *
  * @return 1 if the target string is found in the list, 0 otherwise.
  */
-int in_list(const char* target, char** list);
+int in_list(const char *target, char **list);
 #endif // FILE_PARSER_H
