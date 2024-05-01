@@ -2,3 +2,4 @@ build
 parser
 .vscode
 UT/*.ini
+.cache
