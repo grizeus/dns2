@@ -29,5 +29,4 @@ init_data_t initialize(const char *filename);
  * @return 1 if the target string is found in the list, 0 otherwise.
  */
 int in_list(const char *target, char **list);
-void destroy_init_data(init_data_t* data);
 #endif // FILE_PARSER_H

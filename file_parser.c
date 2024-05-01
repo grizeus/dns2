@@ -130,21 +130,10 @@ init_data_t initialize(const char *filename) {
 int in_list(const char *target, char **list) {
 
   for (size_t i = 0; list[i] != NULL; ++i) {
-    if (strcmp(target, list[i]) == 0) {
+    if (strncmp(target, list[i], strlen(target)) == 0) {
       return 1;
     }
   }
 
   return 0;
-}
-
-void destroy_init_data(init_data_t *data) {
-
-  if (data->upstream) {
-    free(data->upstream);
-  }
-
-  for (size_t i = 0; data->black_list[i] != NULL; ++i) {
-    free(data->black_list[i]);
-  }
 }
