@@ -18,7 +18,6 @@ struct node {
   node_t *left;
   node_t *right;
   uint32_t key;
-  uint32_t size;
   color_e color;
 };
 
