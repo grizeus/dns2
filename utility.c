@@ -1,15 +1,17 @@
 #include <arpa/inet.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
 
 #include "utility.h"
+#include "binary_string.h"
 
 #define PORT 53
 #define DNS_PORT 53
 
-static void query_setup(char query[]);
+static void query_setup(uint8_t query[]);
 
 void setup_sockets(int *sockfd, int *dns_sockfd,
                    struct sockaddr_in *server_addr,
@@ -46,30 +48,30 @@ void setup_sockets(int *sockfd, int *dns_sockfd,
   puts("Sockets setup is done");
 }
 
-binary_string_t build_response(char* initial_query, size_t query_len,
+binary_string_t build_response(binary_string_t* query,
                      binary_string_t *answer) {
-  
+
   binary_string_t new_response = { NULL, 0};
-  if (query_len == 0 || answer->size == 0) {
+  if (query->size == 0 || answer->size == 0) {
     return new_response;
   }
   // allocate memory for response
-  size_t size = query_len + answer->size;
-  char *response = (char *)malloc(size);
+  size_t size = query->size + answer->size;
+  uint8_t *response = (uint8_t  *)malloc(size);
   if (response == NULL) {
     return new_response;
   }
-  query_setup(initial_query);
-  memcpy(response, initial_query, query_len);
-  memcpy(response + query_len, answer->data, answer->size);
+  query_setup(query->data);
+  memcpy(response, query->data, query->size);
+  memcpy(response + query->size, answer->data, answer->size);
 
   new_response.data = response;
   new_response.size = size;
-  
+
   return new_response;
 }
 
-static void query_setup(char query[]) {
+static void query_setup(uint8_t query[]) {
 
   // change flags to 8180(standard response, no error)
   query[2] = 0x81;
