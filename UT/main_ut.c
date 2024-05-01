@@ -209,7 +209,7 @@ int main() {
     TEST(response_data.answer->size == (response.size - query.size));
 
     binary_string_t new_response =
-        build_response(query.data, query.size, response_data.answer);
+        build_response(&query, response_data.answer);
     TEST(memcmp(new_response.data, response.data, new_response.size) == 0);
     binary_string_destroy(&new_response);
   }
@@ -236,7 +236,7 @@ int main() {
     query_data_t query_data = parse_query(&query);
     binary_string_t *answer_from = map_find(map, query_data.question_hash);
     binary_string_t new_response =
-        build_response(query.data, query.size, answer_from);
+        build_response(&query, answer_from);
     TEST(memcmp(new_response.data, response.data, new_response.size) == 0);
     binary_string_destroy(&query);
     binary_string_destroy(&new_response);

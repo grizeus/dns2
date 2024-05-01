@@ -51,7 +51,6 @@ int main(int argc, char **argv) {
 
   while (1) {
 
-    // ssize_t recv_len;
     char buffer[MAX_BUFF_SIZE];
     binary_string_t *answer = {0};
     binary_string_t recv_message = {0};
@@ -91,7 +90,7 @@ int main(int argc, char **argv) {
       binary_string_destroy(&recv_message);
       map_add(clients, query_data.client_hash, &client_addr, NULL);
     } else {
-      binary_string_t new_response = build_response(recv_message.data, recv_message.size, answer);
+      binary_string_t new_response = build_response(&recv_message, answer);
       send_to(sockfd, &new_response, &client_addr);
       binary_string_destroy(&new_response);
       binary_string_destroy(&recv_message);
@@ -112,12 +111,11 @@ int main(int argc, char **argv) {
       binary_string_destroy(&recv_message);
       continue;
     }
-    if (send_to(sockfd, &recv_message, &client_addr)) {
-      // add actual response to map(DO NOT FREE THIS HERE)
-      map_add(lookup, response_data.question_hash, response_data.answer, NULL);
-      map_delete(clients, response_data.client_hash, NULL, NULL, NULL);
-      binary_string_destroy(&recv_message);
-    }
+    // add actual response to map(DO NOT FREE THIS HERE)
+    map_add(lookup, response_data.question_hash, response_data.answer, NULL);
+    map_delete(clients, response_data.client_hash, NULL, NULL, NULL);
+    send_to(sockfd, &recv_message, &client_addr);
+    binary_string_destroy(&recv_message);
   }
 
   return 0;
